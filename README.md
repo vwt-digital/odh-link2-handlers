@@ -1,3 +1,5 @@
+[![CodeFactor](https://www.codefactor.io/repository/github/vwt-digital-solutions/link2-handlers/badge)](https://www.codefactor.io/repository/github/vwt-digital-solutions/link2-handlers)
+
 # link2-handlers
 This repository contains handlers for Link2.
 
