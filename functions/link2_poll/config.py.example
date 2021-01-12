@@ -1,0 +1,14 @@
+# Name of the share storage where the file needs to be polled from
+AZURE_SOURCESHARE = "azure-sourceshare"
+
+# The name of the polled files should start with this value
+REQUIRED_NAME_START = "value"
+
+# The extension of the polled files should be
+REQUIRED_EXTENSION = ".extension"
+
+# The name of the directory on the Azure FileShare where the files should be moved to when downloaded
+PROCESSED_FILES_FOLDER = "folder-name"
+
+# GCP storage bucket
+GCP_STORAGE_BUCKET = "gcp-storage-bucket"
