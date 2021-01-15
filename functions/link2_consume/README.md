@@ -5,6 +5,7 @@ This function consumes messages posted on a Pub/Sub Topic, turns them into XML f
 1. Make sure a ```config.py``` file exists within the directory, based on the [config.example.py](config.example.py), with the correct configuration:
     ~~~
     AZURE_DESTSHARE = Name of the share storage where the file needs to go to
+    AZURE_DESTSHARE_FOLDERS = Prefix of the file containing the folders the file needs to be placed in
     SOURCEPATH_FIELD = Field in the published message from which the Azure sourcefilepath can be created
     XML_ROOT = The root field of the XML file
     XML_ROOT_SUBELEMENT = The first subelement of the root

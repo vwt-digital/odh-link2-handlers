@@ -1,4 +1,4 @@
-import config
+from config import MESSAGE_PROPERTIES, AZURE_DESTSHARE, SOURCEPATH_FIELD, MAPPING, AZURE_DESTSHARE_FOLDERS, XML_ROOT, XML_ROOT_SUBELEMENT
 import os
 import logging
 import xmltodict
@@ -15,8 +15,9 @@ logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(l
 class Link2Processor(object):
     def __init__(self):
         self.data_selector = os.environ.get('DATA_SELECTOR', 'Required parameter is missing')
-        self.meta = config.MESSAGE_PROPERTIES[self.data_selector]
-        self.destshare = config.AZURE_DESTSHARE
+        self.meta = MESSAGE_PROPERTIES[self.data_selector]
+        self.destshare = AZURE_DESTSHARE
+        self.folder_prefix = AZURE_DESTSHARE_FOLDERS
         self.storageaccount = os.environ.get('AZURE_STORAGEACCOUNT', 'Required parameter is missing')
         self.project_id = os.environ.get('PROJECT_ID', 'Required parameter is missing')
         self.storagekey_secret_id = os.environ.get('AZURE_STORAGEKEY_SECRET_ID', 'Required parameter is missing')
@@ -24,8 +25,8 @@ class Link2Processor(object):
         secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
         key_response = client.access_secret_version(request={"name": secret_name})
         self.storagekey = key_response.payload.data.decode("UTF-8")
-        self.sourcepath_field = config.SOURCEPATH_FIELD
-        self.mapping_json = config.MAPPING
+        self.sourcepath_field = SOURCEPATH_FIELD
+        self.mapping_json = MAPPING
 
     def map_json(self, input_json):
         output_json_subelement = {}
@@ -37,7 +38,7 @@ class Link2Processor(object):
             else:
                 row = {field: field_map}
             output_json_subelement.update(row)
-        output_json = {config.XML_ROOT: {config.XML_ROOT_SUBELEMENT: output_json_subelement}}
+        output_json = {XML_ROOT: {XML_ROOT_SUBELEMENT: output_json_subelement}}
         return output_json
 
     def make_xml(self, selector_data, file_name):
@@ -51,7 +52,7 @@ class Link2Processor(object):
         if not sourcepath_field_msg:
             logging.error(f"The sourcepath field {sourcepath_field_msg} cannot be found in message")
 
-        destfilepath = f"{self.data_selector}_{sourcepath_field_msg}.xml"
+        destfilepath = f"{self.folder_prefix}{self.data_selector}_{sourcepath_field_msg}.xml"
 
         logging.info(f"Putting {destfilepath} on //{self.storageaccount}/{self.destshare}")
         share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",

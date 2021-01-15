@@ -6,6 +6,8 @@ MESSAGE_PROPERTIES = {
 
 # Name of the share storage where the file needs to go to
 AZURE_DESTSHARE = "azure-destshare"
+# Prefix of the file containing the folders the file needs to be placed in
+AZURE_DESTSHARE_FOLDERS = "folder1/folder2/"
 # Field in the published message from which the Azure sourcefilepath can be created
 SOURCEPATH_FIELD = "published-message-field"
 
