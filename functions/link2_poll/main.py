@@ -6,9 +6,5 @@ poll_object = FileSharePoll()
 logging.basicConfig(level=logging.INFO)
 
 
-def link2_to_bucket():
+def link2_to_bucket(request):
     poll_object.poll()
-
-
-if __name__ == '__main__':
-    link2_to_bucket()
