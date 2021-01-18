@@ -6,11 +6,12 @@ This function polls from [Azure Fileshare](https://docs.microsoft.com/en-us/azur
 ## Setup
 1. Make sure a ```config.py``` file exists within the directory, based on the [config.example.py](config.example.py), with the correct configuration:
     ~~~
-    AZURE_SOURCESHARE = Name of the share storage where the file needs to be polled 
+    AZURE_SOURCESHARE = Name of the share storage where the file needs to be polled from
+    AZURE_PATH = Name of the path where the file needs to be polled from
     REQUIRED_NAME_START = The string which the file to be polled needs to start with
     REQUIRED_EXTENSION = The extension which the file to be polled needs to have
-    PROCESSED_FILES_FOLDER = The folder in the Azure FileShare where the polled file needs to be put after it is processed
     GCP_STORAGE_BUCKET = The Google Cloud Platform Storage Bucket the polled file needs to be put in
+    GCP_STORAGE_BUCKET_FOLDER = The folder on the GCP storage bucket where the file needs to be placed in
     ~~~
 2. Make sure the following variables are present in the environment:
     ~~~

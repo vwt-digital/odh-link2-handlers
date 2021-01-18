@@ -1,8 +1,9 @@
-from config import AZURE_SOURCESHARE, REQUIRED_NAME_START, REQUIRED_EXTENSION, GCP_STORAGE_BUCKET, PROCESSED_FILES_FOLDER
+from config import AZURE_SOURCESHARE, REQUIRED_NAME_START, REQUIRED_EXTENSION, GCP_STORAGE_BUCKET, AZURE_PATH, GCP_STORAGE_BUCKET_FOLDER
 import os
 import logging
+from datetime import datetime
 
-from azure.storage.fileshare import ShareClient, ShareLeaseClient, ShareFileClient
+from azure.storage.fileshare import ShareFileClient, ShareDirectoryClient
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 
 from google.cloud import secretmanager, storage
@@ -24,24 +25,28 @@ class FileSharePoll(object):
         self.required_extension = REQUIRED_EXTENSION
         self.required_name_start = REQUIRED_NAME_START
         self.gcp_bucket_name = GCP_STORAGE_BUCKET
-        self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
-                                 share_name=self.sourceshare, credential=self.storagekey)
-        self.processed_files_folder = PROCESSED_FILES_FOLDER
+        self.gcp_folder = GCP_STORAGE_BUCKET_FOLDER
+        self.azure_path = AZURE_PATH
+        self.azure_directory = ShareDirectoryClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
+                                                    share_name=self.sourceshare, directory_path=self.azure_path,
+                                                    credential=self.storagekey)
 
     def poll(self):
         # First check if a file exists on the given File Share path
         files_found = self.check_for_files()
         correct_files = []
         for file_found in files_found:
-            # Then add every file that has the correct extension, is not a directory and starts with the correct value to a list
+            # Then add every file that has the correct extension, is not a directory, starts with the correct value to a list
+            # and has a size of more than 0
             if file_found['name'].endswith(self.required_extension) and \
                file_found['is_directory'] is False and \
-               file_found['name'].startswith(self.required_name_start):
+               file_found['name'].startswith(self.required_name_start) and \
+               file_found['size'] > 0:
                 correct_files.append(file_found['name'])
         # Go through list with correct files
         for correct_file in correct_files:
             # Get file from share
-            file_on_share = self.share.get_file_client(correct_file)
+            file_on_share = self.azure_directory.get_file_client(correct_file)
             file_lease = None
             if self.check_file_exists(file_on_share):
                 # Put a file lease on the file so that it cannot be touched
@@ -51,27 +56,21 @@ class FileSharePoll(object):
                 fileshare_file = stream.readall()
                 # Then put the file on the GCP bucket
                 self.put_file_on_bucket(correct_file, fileshare_file)
-                # Then put the file to another bucket to signify that it has been put on the GCP bucket
-                self.put_files_in_folder(correct_file, fileshare_file)
                 # Release the file lease
                 file_lease.break_lease(timeout=5)
                 # Remove the original file from the File Share
+                logging.info("Deleting file from Azure Fileshare")
                 file_on_share.delete_file()
 
-    def put_files_in_folder(self, file_name, file_body):
-        destfilepath = "{}/{}".format(self.processed_files_folder, os.path.basename(file_name))
-        file_on_share = self.share.get_file_client(destfilepath)
-        try:
-            file_on_share.create_file(size=0)
-        except HttpResponseError:
-            ShareLeaseClient(file_on_share).break_lease()
-            file_on_share.create_file(size=0)
-        file_lease = file_on_share.acquire_lease(timeout=5)
-        logging.info("Writing to FileShare")
-        file_on_share.upload_file(file_body, lease=file_lease)
-        file_lease.release(timeout=5)
-
     def put_file_on_bucket(self, file_name, file_body):
+        # Get today's date
+        today = datetime.today()
+        day = today.day
+        month = today.month
+        year = today.year
+        # Add folder on GCP to filename
+        file_name = f"{self.gcp_folder}/{year}/{month}/{day}/{file_name}"
+        logging.info("Putting file on GCP bucket")
         client = storage.Client()
         bucket = client.get_bucket(self.gcp_bucket_name)
         blob = bucket.blob(file_name)
@@ -84,16 +83,16 @@ class FileSharePoll(object):
             return False
         return True
 
-    def try_file_lease(self, file_on_share: ShareFileClient):
+    def try_file_lease(self, file_on_share: ShareDirectoryClient):
         file_lease = None
         try:
             file_lease = file_on_share.acquire_lease(timeout=5)
         except HttpResponseError:
-            logging.error("File exists, but still locked.")
+            logging.info("File exists, but still locked.")
             return None
         return file_lease
 
     def check_for_files(self):
         logging.info("Polling files from FileShare")
-        azure_files = list(self.share.list_directories_and_files())
+        azure_files = list(self.azure_directory.list_directories_and_files())
         return azure_files
