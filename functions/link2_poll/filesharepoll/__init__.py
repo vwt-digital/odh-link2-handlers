@@ -27,13 +27,15 @@ class FileSharePoll(object):
         self.gcp_bucket_name = GCP_STORAGE_BUCKET
         self.gcp_folder = GCP_STORAGE_BUCKET_FOLDER
         self.azure_path = AZURE_PATH
-        self.azure_directory = ShareDirectoryClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
-                                                    share_name=self.sourceshare, directory_path=self.azure_path,
-                                                    credential=self.storagekey)
+        self.azure_directory = None
+        if self.storageaccount:
+            self.azure_directory = ShareDirectoryClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
+                                                        share_name=self.sourceshare, directory_path=self.azure_path,
+                                                        credential=self.storagekey)
 
     def poll(self):
         # Check if storage account is set
-        if self.storageaccount:
+        if self.storageaccount and self.azure_directory:
             # First check if a file exists on the given File Share path
             files_found = self.check_for_files()
             correct_files = []
