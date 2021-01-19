@@ -1,4 +1,6 @@
-from config import MESSAGE_PROPERTIES, AZURE_DESTSHARE, SOURCEPATH_FIELD, MAPPING, AZURE_DESTSHARE_FOLDERS, XML_ROOT, XML_ROOT_SUBELEMENT
+from config import MESSAGE_PROPERTIES, AZURE_STORAGEACCOUNT, \
+                   AZURE_DESTSHARE, SOURCEPATH_FIELD, MAPPING, \
+                   AZURE_DESTSHARE_FOLDERS, XML_ROOT, XML_ROOT_SUBELEMENT
 import os
 import logging
 import xmltodict
@@ -18,13 +20,15 @@ class Link2Processor(object):
         self.meta = MESSAGE_PROPERTIES[self.data_selector]
         self.destshare = AZURE_DESTSHARE
         self.folder_prefix = AZURE_DESTSHARE_FOLDERS
-        self.storageaccount = os.environ.get('AZURE_STORAGEACCOUNT', 'Required parameter is missing')
+        self.storageaccount = AZURE_STORAGEACCOUNT
         self.project_id = os.environ.get('PROJECT_ID', 'Required parameter is missing')
         self.storagekey_secret_id = os.environ.get('AZURE_STORAGEKEY_SECRET_ID', 'Required parameter is missing')
-        client = secretmanager.SecretManagerServiceClient()
-        secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
-        key_response = client.access_secret_version(request={"name": secret_name})
-        self.storagekey = key_response.payload.data.decode("UTF-8")
+        self.storagekey = None
+        if self.storageaccount:
+            client = secretmanager.SecretManagerServiceClient()
+            secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
+            key_response = client.access_secret_version(request={"name": secret_name})
+            self.storagekey = key_response.payload.data.decode("UTF-8")
         self.sourcepath_field = SOURCEPATH_FIELD
         self.mapping_json = MAPPING
 
