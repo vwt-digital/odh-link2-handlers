@@ -56,11 +56,9 @@ class FileSharePoll(object):
                 fileshare_file = stream.readall()
                 # Then put the file on the GCP bucket
                 self.put_file_on_bucket(correct_file, fileshare_file)
-                # Release the file lease
-                file_lease.break_lease(timeout=5)
                 # Remove the original file from the File Share
                 logging.info("Deleting file from Azure Fileshare")
-                file_on_share.delete_file()
+                file_on_share.delete_file(lease=file_lease)
 
     def put_file_on_bucket(self, file_name, file_body):
         # Get today's date
