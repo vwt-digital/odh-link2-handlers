@@ -1,0 +1,23 @@
+---
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud functions deploy ${PROJECT_ID}-consume-to-link2-func \
+          --entry-point=json_to_link2 \
+          --runtime=python37 \
+          --trigger-http \
+          --project=${PROJECT_ID} \
+          --region=europe-west1 \
+          --max-instances=1 \
+          --timeout=540 \
+          --set-env-vars=DATA_SELECTOR=data-field-message \
+          --set-env-vars=PROJECT_ID=${PROJECT_ID} \
+          --set-env-vars=AZURE_STORAGEACCOUNT=azure-storage-name \
+          --set-env-vars=AZURE_STORAGEKEY_SECRET_ID=${PROJECT_ID}-azure-storage-key \
+        gcloud beta functions set-iam-policy ${PROJECT_ID}-consume-to-link2-func \
+          --region=europe-west1 \
+          --project=${PROJECT_ID} ../../../config/${PROJECT_ID}/consume_func_permissions.json
+    dir: 'functions/link2_consume'

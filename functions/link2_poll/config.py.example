@@ -1,0 +1,17 @@
+# Name of the share storage where the file needs to be polled from
+AZURE_SOURCESHARE = "azure-sourceshare"
+
+# Name of the folder where the file needs to be polled from
+AZURE_FOLDER = "azure-folder-name"
+
+# The name of the polled files should start with this value
+REQUIRED_NAME_START = "value"
+
+# The extension of the polled files should be
+REQUIRED_EXTENSION = ".extension"
+
+# GCP storage bucket
+GCP_STORAGE_BUCKET = "gcp-storage-bucket"
+
+# GCP storage bucket folder
+GCP_STORAGE_BUCKET_FOLDER = "gcp-storage-bucket-folder"
