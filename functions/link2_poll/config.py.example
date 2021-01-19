@@ -1,3 +1,6 @@
+# Name of the Azure storage account
+AZURE_STORAGEACCOUNT = "azure-storage-account"
+
 # Name of the share storage where the file needs to be polled from
 AZURE_SOURCESHARE = "azure-sourceshare"
 

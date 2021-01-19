@@ -4,6 +4,7 @@ This function consumes messages posted on a Pub/Sub Topic, turns them into XML f
 ## Setup
 1. Make sure a ```config.py``` file exists within the directory, based on the [config.example.py](config.example.py), with the correct configuration:
     ~~~
+    AZURE_STORAGEACCOUNT = The Azure storage account the XML file needs to be send to
     AZURE_DESTSHARE = Name of the share storage where the file needs to go to
     AZURE_DESTSHARE_FOLDERS = Prefix of the file containing the folders the file needs to be placed in
     SOURCEPATH_FIELD = Field in the published message from which the Azure sourcefilepath can be created
@@ -15,7 +16,6 @@ This function consumes messages posted on a Pub/Sub Topic, turns them into XML f
     ~~~
     DATA_SELECTOR = The identifier used for this configuration
     PROJECT_ID = The project ID of the GCP project the function is deployed to
-    AZURE_STORAGEACCOUNT = The Azure storage account the XML file needs to be send to
     AZURE_STORAGEKEY_SECRET_ID = The Azure storage key
     ~~~
 3. Deploy the function with help of the [cloudbuild.example.yaml](cloudbuild.example.yaml) to the Google Cloud Platform.
