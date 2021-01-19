@@ -52,22 +52,26 @@ class Link2Processor(object):
         if not sourcepath_field_msg:
             logging.error(f"The sourcepath field {sourcepath_field_msg} cannot be found in message")
 
-        destfilepath = f"{self.folder_prefix}{self.data_selector}_{sourcepath_field_msg}.xml"
+        # Check if storage account is set
+        if self.storageaccount:
+            destfilepath = f"{self.folder_prefix}{self.data_selector}_{sourcepath_field_msg}.xml"
 
-        logging.info(f"Putting {destfilepath} on //{self.storageaccount}/{self.destshare}")
-        share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
-                            share_name=self.destshare, credential=self.storagekey)
-        file_on_share = share.get_file_client(destfilepath)
-        try:
-            file_on_share.create_file(size=0)
-        except HttpResponseError:
-            ShareLeaseClient(file_on_share).break_lease()
-            file_on_share.create_file(size=0)
-        file_lease = file_on_share.acquire_lease(timeout=5)
-        sourcefile = self.make_xml(msg, destfilepath)
-        logging.info(f"Writing to //{self.storageaccount}/{self.destshare}/{destfilepath}")
-        file_on_share.upload_file(sourcefile, lease=file_lease)
-        file_lease.release(timeout=5)
+            logging.info(f"Putting {destfilepath} on //{self.storageaccount}/{self.destshare}")
+            share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
+                                share_name=self.destshare, credential=self.storagekey)
+            file_on_share = share.get_file_client(destfilepath)
+            try:
+                file_on_share.create_file(size=0)
+            except HttpResponseError:
+                ShareLeaseClient(file_on_share).break_lease()
+                file_on_share.create_file(size=0)
+            file_lease = file_on_share.acquire_lease(timeout=5)
+            sourcefile = self.make_xml(msg, destfilepath)
+            logging.info(f"Writing to //{self.storageaccount}/{self.destshare}/{destfilepath}")
+            file_on_share.upload_file(sourcefile, lease=file_lease)
+            file_lease.release(timeout=5)
+        else:
+            logging.info("No storage account is set")
 
     def process(self, payload):
         selector_data = payload[self.data_selector]
