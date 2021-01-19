@@ -32,33 +32,37 @@ class FileSharePoll(object):
                                                     credential=self.storagekey)
 
     def poll(self):
-        # First check if a file exists on the given File Share path
-        files_found = self.check_for_files()
-        correct_files = []
-        for file_found in files_found:
-            # Then add every file that has the correct extension, is not a directory, starts with the correct value to a list
-            # and has a size of more than 0
-            if file_found['name'].endswith(self.required_extension) and \
-               file_found['is_directory'] is False and \
-               file_found['name'].startswith(self.required_name_start) and \
-               file_found['size'] > 0:
-                correct_files.append(file_found['name'])
-        # Go through list with correct files
-        for correct_file in correct_files:
-            # Get file from share
-            file_on_share = self.azure_directory.get_file_client(correct_file)
-            file_lease = None
-            if self.check_file_exists(file_on_share):
-                # Put a file lease on the file so that it cannot be touched
-                file_lease = self.try_file_lease(file_on_share)
-            if file_lease:
-                stream = file_on_share.download_file()
-                fileshare_file = stream.readall()
-                # Then put the file on the GCP bucket
-                self.put_file_on_bucket(correct_file, fileshare_file)
-                # Remove the original file from the File Share
-                logging.info("Deleting file from Azure Fileshare")
-                file_on_share.delete_file(lease=file_lease)
+        # Check if storage account is set
+        if self.storageaccount:
+            # First check if a file exists on the given File Share path
+            files_found = self.check_for_files()
+            correct_files = []
+            for file_found in files_found:
+                # Then add every file that has the correct extension, is not a directory, starts with the correct value to a list
+                # and has a size of more than 0
+                if file_found['name'].endswith(self.required_extension) and \
+                   file_found['is_directory'] is False and \
+                   file_found['name'].startswith(self.required_name_start) and \
+                   file_found['size'] > 0:
+                    correct_files.append(file_found['name'])
+            # Go through list with correct files
+            for correct_file in correct_files:
+                # Get file from share
+                file_on_share = self.azure_directory.get_file_client(correct_file)
+                file_lease = None
+                if self.check_file_exists(file_on_share):
+                    # Put a file lease on the file so that it cannot be touched
+                    file_lease = self.try_file_lease(file_on_share)
+                if file_lease:
+                    stream = file_on_share.download_file()
+                    fileshare_file = stream.readall()
+                    # Then put the file on the GCP bucket
+                    self.put_file_on_bucket(correct_file, fileshare_file)
+                    # Remove the original file from the File Share
+                    logging.info("Deleting file from Azure Fileshare")
+                    file_on_share.delete_file(lease=file_lease)
+        else:
+            logging.info("No storage account is set")
 
     def put_file_on_bucket(self, file_name, file_body):
         # Get today's date
