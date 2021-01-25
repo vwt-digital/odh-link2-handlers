@@ -67,7 +67,7 @@ The first field below the XML root field should always be the XML subroot field.
 
 ```xml_filename``` The field "xml_filename" is the field with which the XML file should start.
 It is optional to add the string ```GUID``` and/or ```TICKETNR``` to the value of this field.
-If ```GUID``` is defined in the name, it will be replaced by a [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier#:~:text=A%20universally%20unique%20identifier%20(UUID,%2C%20for%20practical%20purposes%2C%20unique.)
+If ```GUID``` is defined in the name, it will be replaced by a [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier#:~:text=A%20universally%20unique%20identifier%20(UUID,%2C%20for%20practical%20purposes%2C%20unique).
 If ```TICKETNR``` is defined, it will be replaced by getting the digits from the value of the field defined in ```ticket_number_field```.
 
 ### Optional fields
