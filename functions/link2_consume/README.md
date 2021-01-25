@@ -65,16 +65,16 @@ The mapping parameter is a dictionary which is set up as illustrated below:
 ### Required fields
 The first field below the XML root field should always be the XML subroot field.
 
-```xml_filename``` The field "xml_filename" is the field with which the XML file should start.
-It is optional to add the string ```GUID``` and/or ```TICKETNR``` to the value of this field.
-If ```GUID``` is defined in the name, it will be replaced by a [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier#:~:text=A%20universally%20unique%20identifier%20(UUID,%2C%20for%20practical%20purposes%2C%20unique).
+```xml_filename``` The field "xml_filename" is the field with which the XML file should start.  
+It is optional to add the string ```GUID``` and/or ```TICKETNR``` to the value of this field.  
+If ```GUID``` is defined in the name, it will be replaced by a [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier).  
 If ```TICKETNR``` is defined, it will be replaced by getting the digits from the value of the field defined in ```ticket_number_field```.
 
 ### Optional fields
 The following fields are optional:
 
-```ticket_number_field``` The field "ticket_number_field" has as value the field in the published message where the ticket number should come from.
-```address_split``` The field "address_split" contains fields which the address should be split out into.
+```ticket_number_field``` The field "ticket_number_field" has as value the field in the published message where the ticket number should come from.  
+```address_split``` The field "address_split" contains fields which the address should be split out into.  
 ```hardcoded_fields``` The field "hardcoded_fields" has XML fields which have as their value the hardcoded value they should have.
 
 ## License
