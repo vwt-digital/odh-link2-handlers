@@ -1,0 +1,19 @@
+---
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud functions deploy ${PROJECT_ID}-xml-to-json-func \
+          --entry-point=status_to_json \
+          --runtime=python37 \
+          --trigger-bucket=${PROJECT_ID}-bucket-stg \
+          --project=${PROJECT_ID} \
+          --region=europe-west1 \
+          --max-instances=1 \
+          --timeout=540
+        gcloud beta functions set-iam-policy ${PROJECT_ID}-xml-to-json-func \
+          --region=europe-west1 \
+          --project=${PROJECT_ID} ../../../config/${PROJECT_ID}/consume_func_permissions.json
+    dir: 'functions/bucket_xml_to_json'
