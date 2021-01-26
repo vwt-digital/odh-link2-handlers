@@ -5,7 +5,7 @@ steps:
     args:
       - '-c'
       - |
-        gcloud functions deploy ${PROJECT_ID}-xml-to-json-func \
+        gcloud functions deploy ${PROJECT_ID}-bucket-xml-to-json-func \
           --entry-point=status_to_json \
           --runtime=python37 \
           --trigger-bucket=${PROJECT_ID}-bucket-stg \

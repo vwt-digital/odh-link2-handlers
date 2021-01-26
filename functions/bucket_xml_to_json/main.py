@@ -20,8 +20,3 @@ def status_to_json(data, context):
     # Returning any 2xx status indicates successful receipt of the message.
     # 204: no content, delivery successfull, no further actions needed
     return 'OK', 204
-
-
-# main defined for testing
-if __name__ == '__main__':
-    status_to_json({'bucket': 'lalala', 'name': 'testfile.json'}, {'event_id': 0, 'event_type': 'none'})

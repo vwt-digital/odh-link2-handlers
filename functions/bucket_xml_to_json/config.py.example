@@ -1,1 +1,16 @@
+# Fields that should be in the json, other fields should be skipped
+# Do not forget to add the root and subroots
+REQUIRED_FIELDS = [
+    "required-field1",
+    "required-field2",
+    "required-field-etcetera"
+]
 
+# GCP project ID where the topic to send the JSON to resides
+TOPIC_PROJECT_ID = "topic-project-id"
+
+# GCP topic name
+TOPIC_NAME = "topic-name"
+
+# The field in the message received by the topic which contains the JSON
+TOPIC_FIELD = "field"

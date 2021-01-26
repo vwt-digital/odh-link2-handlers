@@ -1,0 +1,4 @@
+gobits==1.0.5
+google-cloud-storage==1.35.0
+google-cloud-pubsub==2.2.0
+xmltodict==0.12.0
