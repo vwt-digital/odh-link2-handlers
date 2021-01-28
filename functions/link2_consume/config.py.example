@@ -13,15 +13,34 @@ AZURE_DESTSHARE_FOLDERS = "folder1/folder2/"
 # Field in the published message from which the Azure sourcefilepath can be created
 SOURCEPATH_FIELD = "published-message-field"
 
-# The root field of the XML file
-XML_ROOT = ""
-# The first subelement of the root
-XML_ROOT_SUBELEMENT = ""
-
-# The mapping from the XML file fields to the field of the published message for Link2
+# The mapping from the field of the published message to the XML file fields for Link2
+# The first field is the XML root
+# The first of the second fields is the XML root subelement
+# And the values in the second field are the mapping
+# The field "xml_filename" is the field with which the XML file should start
+# The field "ticket_number_field" has as value the field in the published message where the ticket number should come from
+# The field "address_split" contains fields which the address should be split out into
+# The field "hardcoded_fields" has XML fields which have as their value the hardcoded value they should have
 MAPPING = {
-    "field-in-link2-1": "published-message-field-1",
-    "field-in-link2-2": "published-message-field-2",
-    "field-in-link2-3": "published-message-field-3"
-    # etcetera
+    "xml_root": {
+        "xml_subroot": {
+            "xml_subroot_field_1": "published_message_field_1",
+            "xml_subroot_field_2": "published_message_field_2",
+            "xml_subroot_field_etcetera": "published_message_field_etcetera"
+        },
+        "xml_filename": "xml_filename",
+        "ticket_number_field": "published_message_ticket_number_field",
+        "address_split": {
+        "published_message_address_field": {
+            "streetname": "xml_address_field_streetname",
+            "number": "xml_address_field_number",
+            "addition": "xml_address_field_addition"
+        }
+        },
+        "hardcoded_fields": {
+            "xml_subroot_field_1": "hardcoded_value_1",
+            "xml_subroot_field_2": "hardcoded_value_2",
+            "xml_subroot_field_etcetera": "hardcoded_value_etcetera"
+        }
+    }
 }
