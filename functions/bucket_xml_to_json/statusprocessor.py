@@ -30,9 +30,7 @@ def process(data, context):
 
 
 def json_to_topic(xml_json, context):
-    # TODO: make gobits from context
-    # gobits = Gobits.from_context(context=context)
-    gobits = Gobits()
+    gobits = Gobits.from_context(context=context)
     # Publish to topic
     try:
         publisher = pubsub_v1.PublisherClient()
