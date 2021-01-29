@@ -21,6 +21,10 @@ SOURCEPATH_FIELD = "published-message-field"
 # The field "ticket_number_field" has as value the field in the published message where the ticket number should come from
 # The field "address_split" contains fields which the address should be split out into
 # The field "hardcoded_fields" has XML fields which have as their value the hardcoded value they should have
+# The field "firestore_fields" has XML fields which have as their value the Firestore database in which they should be looked up,
+#   the IDs in the Firestore and the value needed
+# The field "combined_fields" contains XML fields which have as their value a combination of fields of the published message,
+#   the combination method can be NEWLINE or HYPHEN
 MAPPING = {
     "xml_root": {
         "xml_subroot": {
@@ -41,6 +45,27 @@ MAPPING = {
             "xml_subroot_field_1": "hardcoded_value_1",
             "xml_subroot_field_2": "hardcoded_value_2",
             "xml_subroot_field_etcetera": "hardcoded_value_etcetera"
+        },
+        "firestore_fields": {
+            "xml_field": {
+                "firestore_collection": "firestore_collection_name",
+                "firestore_ids": [
+                    {"firestore_field_1": "json_field_1"},
+                    {"firestore_field_2": "json_field_2"},
+                    {"firestore_field_etcetera": "json_field_etcetara"}
+                ],
+                "firestore_value": "firestore_field_value"
+            }
+        },
+        "combined_fields": {
+            "xml_field": {
+                "json_fields": [
+                    "json_field_1",
+                    "json_field_2",
+                    "json_field_etcetera"
+                ],
+                "combination_method": "HYPHEN or NEWLINE"
+            }
         }
     }
 }

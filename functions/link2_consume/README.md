@@ -75,7 +75,155 @@ The following fields are optional:
 
 ```ticket_number_field``` The field "ticket_number_field" has as value the field in the published message where the ticket number should come from.  
 ```address_split``` The field "address_split" contains fields which the address should be split out into.  
-```hardcoded_fields``` The field "hardcoded_fields" has XML fields which have as their value the hardcoded value they should have.
+It should look as follows:
+~~~JSON
+{
+  "published_message_address_field": {
+      "streetname": "xml_address_field_streetname",
+      "number": "xml_address_field_number",
+      "addition": "xml_address_field_addition"
+  }
+}
+~~~
+```hardcoded_fields``` The field "hardcoded_fields" has XML fields which have as their value the hardcoded value they should have.  
+It should look as follows:
+~~~JSON
+{
+  "hardcoded_fields": {
+      "xml_subroot_field_1": "hardcoded_value_1",
+      "xml_subroot_field_2": "hardcoded_value_2",
+      "xml_subroot_field_etcetera": "hardcoded_value_etcetera"
+  }
+}
+~~~
+```firestore_fields``` The field "firestore_fields" has XML fields which should be looked up in the Firestore database.  
+It should look as follows:
+~~~JSON
+{
+  "firestore_fields": {
+    "xml_field": {
+      "firestore_collection": "firestore_collection_name",
+      "firestore_ids": [
+          {"firestore_field_1": "json_field_1"},
+          {"firestore_field_2": "json_field_2"},
+          {"firestore_field_etcetera": "json_field_etcetara"}
+      ],
+      "firestore_value": "firestore_field_value"
+    }
+  }
+}
+~~~
+Where:  
+      ```xml_field``` is the field in the XML for which the value should be looked up.  
+      ```firestore_collection``` is the collection in the firestore where the value should be looked up in.
+      ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.
+      ```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
+
+```combined_fields``` This field contains XML fields that should be combined from fields from the published message defined in
+```json_fields```. If this is a list with only 1 value, the combination method will be used to combine all the words in the field.  
+The ```combination_method``` can be ```HYPHEN``` or ```NEWLINE```.
+It should look as follows:
+~~~JSON
+{
+  "combined_fields": {
+      "xml_field": {
+          "json_fields": [
+              "json_field_1",
+              "json_field_2",
+              "json_field_etcetera"
+          ],
+          "combination_method": "HYPHEN or NEWLINE"
+      }
+  }
+}
+~~~
+
+### Extra field values
+The following field values are recognized by the code:
+```TICKETNR``` The value of the field in the XML should be the ticket number defined in "ticket_number_field"
+```HARDCODED``` If you fill in this value, the code will look the field up in the "hardcoded_fields" fields in the mapping.
+```ADDRESS_SPLIT``` If you fill in this value, the code will split the address as defined in the field "address_split".
+```FIRESTORE``` If you fill in this value, the code will look up the value as defined in the field "firestore_fields".
+```COMBINED``` This value shows the program that the value should be looked up in the field "combined_fields".
+
+### Example of mapping
+Below is a full example of a mapping JSON.
+~~~JSON
+{
+  "Addresses": {
+        "Address": {
+            "Code": "COMBINED",
+            "TicketNumber": "ticket_number",
+            "StreetName": "ADDRESS_SPLIT",
+            "Number": "ADDRESS_SPLIT",
+            "Addition": "ADDRESS_SPLIT",
+            "PostalCode": "postalcode",
+            "Land": "HARDCODED",
+            "UitvLand": "HARDCODED",
+            "CustomerTicket": "TICKETNR"
+        },
+        "xml_filename": "Address_TICKETNR_GUID",
+        "ticket_number_field": "ticket_number",
+        "address_split": {
+            "adres": {
+                "streetname": "StreetName",
+                "number": "Number",
+                "addition": "Addition"
+            }
+        },
+        "hardcoded_fields": {
+                "Land": "NL"
+        },
+        "combined_fields": {
+            "Code": {
+                "json_fields": [
+                    "adres"
+                ],
+                "combination_method": "HYPHEN"
+            }
+        }
+  },
+  "Contacts": {
+      "Contact": {
+          "TicketNumber": "ticket_number",
+          "Name": "name",
+          "Email": "email_address",
+          "JobType": "FIRESTORE",
+          "BusinessUnit": "FIRESTORE",
+          "CustomerTicket": "TICKETNR",
+          "ContactInformation": "COMBINED",
+      },
+      "xml_filename": "Activity_TICKETNR_GUID",
+      "ticket_number_field": "ticket_number",
+      "firestore_fields": {
+          "JobType": {
+              "firestore_collection": "job_types_collection",
+              "firestore_ids": [
+                  {"incoming_job_type_firestore": "incoming_job_type"}
+              ],
+              "firestore_value": "outgoing_job_type"
+          },
+          "BusinessUnit": {
+              "firestore_collection": "business_units_collection",
+              "firestore_ids": [
+                  {"incoming_job_type_firestore": "incoming_job_type"},
+                  {"incoming_name_field_firestore": "incoming_name_field"}
+              ],
+              "firestore_value": "outgoing_business_unit"
+          }
+      },
+      "combined_fields": {
+            "ContactInformation": {
+                "json_fields": [
+                    "name",
+                    "email_address"
+                ],
+                "combination_method": "NEWLINE"
+            }
+      }
+  }
+}
+~~~
 
 ## License
 This function is licensed under the [GPL-3](https://www.gnu.org/licenses/gpl-3.0.en.html) License
