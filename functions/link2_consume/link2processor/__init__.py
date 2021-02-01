@@ -6,7 +6,6 @@ import logging
 import xmltodict
 import re
 import uuid
-import sys
 
 from firestoreprocessor import FirestoreProcessor
 
@@ -46,7 +45,7 @@ class Link2Processor(object):
         # Check if there's only 1 digit part
         if len(digit_list) > 1:
             logging.error("Multiple digit parts in ticket number")
-            sys.exit(1)
+            return False
         # Return ticket number
         return digit_list[0]
 
@@ -104,7 +103,7 @@ class Link2Processor(object):
                                     row = {field: address_addition[1]}
                             else:
                                 logging.error("Field should be split conform address split but address_split field is not defined")
-                                sys.exit(1)
+                                return False
                         # If value in mapping json is "FIRESTORE"
                         elif field_json == "FIRESTORE":
                             # The value can be looked up in the firestore
@@ -132,13 +131,13 @@ class Link2Processor(object):
                                         logging.error(f"The Firestore querie '{xml_fs_value}'"
                                                       f" did not result in a value for XML field '{field}'"
                                                       f" in collection {collection_name}")
-                                        sys.exit(1)
+                                        return False
                                 else:
                                     logging.error(f"The firestore_fields field does not contain key '{field}'")
-                                    sys.exit(1)
+                                    return False
                             else:
                                 logging.error("The config contains the value FIRESTORE but the firestore_fields field is not defined")
-                                sys.exit(1)
+                                return False
                         # If value in mapping json in "COMBINED"
                         elif field_json == "COMBINED":
                             # Get the dictionary belonging to the value
@@ -169,24 +168,28 @@ class Link2Processor(object):
                                                 combined_value = com_json_value
                                     else:
                                         logging.error(f"Combination method for field {field} is not recognized")
-                                        sys.exit(1)
+                                        return False
                                 else:
                                     logging.error(f"The combined_fields field does not contain XML field {field}")
-                                    sys.exit(1)
+                                    return False
                                 row = {field: combined_value}
                             else:
                                 logging.error("The config contains the value COMBINED but the combined_fields field is not defined")
-                                sys.exit(1)
+                                return False
                         # If value in mapping json is "TICKETNR"
                         elif field_json == "TICKETNR":
                             # Check what the field is that should be mapped to the ticket_number_field
                             # Check if there's an ticket number field defined
                             ticket_number_field = self.mapping_json[xml_root].get('ticket_number_field')
                             if ticket_number_field:
-                                row = {field: self.get_ticket_nr(ticket_number_field, input_json)}
+                                ticket_nr = self.get_ticket_nr(ticket_number_field, input_json)
+                                if ticket_nr:
+                                    row = {field: ticket_nr}
+                                else:
+                                    return False
                             else:
                                 logging.error("Ticket number is needed but ticket number field is not defined")
-                                sys.exit(1)
+                                return False
                         else:
                             if field_map == "None" or not field_map:
                                 row = {field: ""}
@@ -219,7 +222,6 @@ class Link2Processor(object):
         addition = ""
         if len(address_reg) <= 1:
             logging.error("Address misses street or number")
-            sys.exit(1)
         elif len(address_reg) == 2:
             street = address_reg[0]
             number = address_reg[1]
@@ -229,7 +231,6 @@ class Link2Processor(object):
             addition = address_reg[2]
         else:
             logging.error("Address has more values than street, number and addition")
-            sys.exit(1)
         # Remove whitespace
         street = street.replace(" ", "")
         number = number.replace(" ", "")
@@ -242,6 +243,8 @@ class Link2Processor(object):
         if self.storageaccount:
             # Map the message to XMLs
             mapped_jsons = self.map_json(msg)
+            if not mapped_jsons:
+                return False
             # For every kind of XML file
             field_count = 0
             for xml_root in self.mapping_json:
@@ -265,7 +268,7 @@ class Link2Processor(object):
                                 file_name_field = file_name_field.replace("TICKETNR", self.get_ticket_nr(ticket_number_field, msg))
                             else:
                                 logging.error("Ticket number is needed but ticket number field is not defined")
-                                sys.exit(1)
+                                return False
                         # If filename contains "GUID", it should be changed into a GUID
                         if "GUID" in file_name_field:
                             guid = str(uuid.uuid4())
@@ -283,9 +286,10 @@ class Link2Processor(object):
 
         if isinstance(selector_data, list):
             for data in selector_data:
-                self.msg_to_fileshare(data)
+                if not self.msg_to_fileshare(data):
+                    logging.error("Message is not processed")
         elif isinstance(selector_data, dict):
-            self.msg_to_fileshare(selector_data)
+            if not self.msg_to_fileshare(selector_data):
+                logging.error("Message is not processed")
         else:
             logging.error("Message is not a list or a dictionary")
-            sys.exit(1)
