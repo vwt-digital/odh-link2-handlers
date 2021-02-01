@@ -6,6 +6,7 @@ import logging
 import xmltodict
 import re
 import uuid
+import sys
 
 from firestoreprocessor import FirestoreProcessor
 
@@ -45,6 +46,7 @@ class Link2Processor(object):
         # Check if there's only 1 digit part
         if len(digit_list) > 1:
             logging.error("Multiple digit parts in ticket number")
+            sys.exit(1)
         # Return ticket number
         return digit_list[0]
 
@@ -102,6 +104,7 @@ class Link2Processor(object):
                                     row = {field: address_addition[1]}
                             else:
                                 logging.error("Field should be split conform address split but address_split field is not defined")
+                                sys.exit(1)
                         # If value in mapping json is "FIRESTORE"
                         elif field_json == "FIRESTORE":
                             # The value can be looked up in the firestore
@@ -129,10 +132,13 @@ class Link2Processor(object):
                                         logging.error(f"The Firestore querie '{xml_fs_value}'"
                                                       f" did not result in a value for XML field '{field}'"
                                                       f" in collection {collection_name}")
+                                        sys.exit(1)
                                 else:
                                     logging.error(f"The firestore_fields field does not contain key '{field}'")
+                                    sys.exit(1)
                             else:
                                 logging.error("The config contains the value FIRESTORE but the firestore_fields field is not defined")
+                                sys.exit(1)
                         # If value in mapping json in "COMBINED"
                         elif field_json == "COMBINED":
                             # Get the dictionary belonging to the value
@@ -163,11 +169,14 @@ class Link2Processor(object):
                                                 combined_value = com_json_value
                                     else:
                                         logging.error(f"Combination method for field {field} is not recognized")
+                                        sys.exit(1)
                                 else:
                                     logging.error(f"The combined_fields field does not contain XML field {field}")
+                                    sys.exit(1)
                                 row = {field: combined_value}
                             else:
                                 logging.error("The config contains the value COMBINED but the combined_fields field is not defined")
+                                sys.exit(1)
                         # If value in mapping json is "TICKETNR"
                         elif field_json == "TICKETNR":
                             # Check what the field is that should be mapped to the ticket_number_field
@@ -177,6 +186,7 @@ class Link2Processor(object):
                                 row = {field: self.get_ticket_nr(ticket_number_field, input_json)}
                             else:
                                 logging.error("Ticket number is needed but ticket number field is not defined")
+                                sys.exit(1)
                         else:
                             if field_map == "None" or not field_map:
                                 row = {field: ""}
@@ -209,6 +219,7 @@ class Link2Processor(object):
         addition = ""
         if len(address_reg) <= 1:
             logging.error("Address misses street or number")
+            sys.exit(1)
         elif len(address_reg) == 2:
             street = address_reg[0]
             number = address_reg[1]
@@ -218,6 +229,7 @@ class Link2Processor(object):
             addition = address_reg[2]
         else:
             logging.error("Address has more values than street, number and addition")
+            sys.exit(1)
         # Remove whitespace
         street = street.replace(" ", "")
         number = number.replace(" ", "")
@@ -253,6 +265,7 @@ class Link2Processor(object):
                                 file_name_field = file_name_field.replace("TICKETNR", self.get_ticket_nr(ticket_number_field, msg))
                             else:
                                 logging.error("Ticket number is needed but ticket number field is not defined")
+                                sys.exit(1)
                         # If filename contains "GUID", it should be changed into a GUID
                         if "GUID" in file_name_field:
                             guid = str(uuid.uuid4())
@@ -275,3 +288,4 @@ class Link2Processor(object):
             self.msg_to_fileshare(selector_data)
         else:
             logging.error("Message is not a list or a dictionary")
+            sys.exit(1)
