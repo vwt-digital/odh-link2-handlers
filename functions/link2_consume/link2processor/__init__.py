@@ -280,6 +280,7 @@ class Link2Processor(object):
                     field_count = field_count + 1
         else:
             logging.info("No storage account is set")
+        return True
 
     def process(self, payload):
         selector_data = payload[self.data_selector]
