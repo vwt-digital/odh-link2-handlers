@@ -36,7 +36,7 @@ class Link2Processor(object):
             self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
                                      share_name=self.destshare, credential=self.storagekey)
         self.sourcepath_field = SOURCEPATH_FIELD
-        self.mapping_json = MAPPING
+        self.mapping = MAPPING
         self.gcp_firestore = FirestoreProcessor()
 
     def get_ticket_nr(self, ticket_number_field, input_json):
@@ -49,15 +49,16 @@ class Link2Processor(object):
         # Return ticket number
         return digit_list[0]
 
-    def map_json(self, input_json):
+    def map_json(self, mapping_json, input_json):
         output_jsons = []
+        logbooks = []
         # For every XML root
-        for xml_root in self.mapping_json:
+        for xml_root in mapping_json:
             address_street = []
             address_number = []
             address_addition = []
             # Check if there's an address split field defined in the mapping json
-            address_split = self.mapping_json[xml_root].get('address_split')
+            address_split = mapping_json[xml_root].get('address_split')
             if address_split:
                 # for every address field
                 for address_field in address_split:
@@ -66,10 +67,10 @@ class Link2Processor(object):
                     address_street = [address_split[address_field]['streetname'], street]
                     address_number = [address_split[address_field]['number'], number]
                     address_addition = [address_split[address_field]['addition'], addition]
-            firestore_fields = self.mapping_json[xml_root].get('firestore_fields')
-            combined_fields = self.mapping_json[xml_root].get('combined_fields')
+            firestore_fields = mapping_json[xml_root].get('firestore_fields')
+            combined_fields = mapping_json[xml_root].get('combined_fields')
             # Get the sub element
-            for xml_root_sub in self.mapping_json[xml_root]:
+            for xml_root_sub in mapping_json[xml_root]:
                 # If the sub element is not 'xml_filename', 'address_split'
                 # or 'ticket_number_field' or 'hardcoded_fields'
                 # or 'firestore_fields' or 'combined_fields'
@@ -80,27 +81,27 @@ class Link2Processor(object):
                    xml_root_sub != "firestore_fields" and \
                    xml_root_sub != "combined_fields":
                     json_subelement = {}
-                    for field in self.mapping_json[xml_root][xml_root_sub]:
-                        field_json = self.mapping_json[xml_root][xml_root_sub][field]
-                        field_map = input_json.get(field_json)
+                    for field in mapping_json[xml_root][xml_root_sub]:
+                        field_json = mapping_json[xml_root][xml_root_sub][field]
+                        field_value = ""
                         row = {}
                         # If value in mapping json is "HARDCODED"
                         if field_json == "HARDCODED":
                             # Check if field is in "hardcoded_fields"
-                            hardcoded_fields = self.mapping_json[xml_root].get("hardcoded_fields")
+                            hardcoded_fields = mapping_json[xml_root].get("hardcoded_fields")
                             if hardcoded_fields:
                                 if field in hardcoded_fields:
-                                    row = {field: hardcoded_fields[field]}
+                                    field_value = hardcoded_fields[field]
                         # If value in mapping json is "ADDRESS_SPLIT"
                         elif field_json == "ADDRESS_SPLIT":
                             # Check if address, number and addition are defined
                             if address_street and address_number and address_addition:
                                 if field == address_street[0]:
-                                    row = {field: address_street[1]}
+                                    field_value = address_street[1]
                                 elif field == address_number[0]:
-                                    row = {field: address_number[1]}
+                                    field_value = address_number[1]
                                 elif field == address_addition[0]:
-                                    row = {field: address_addition[1]}
+                                    field_value = address_addition[1]
                             else:
                                 logging.error("Field should be split conform address split but address_split field is not defined")
                                 return False
@@ -126,12 +127,31 @@ class Link2Processor(object):
                                     succeeded, xml_fs_value = self.gcp_firestore.get_value(collection_name, json_values,
                                                                                            fs_dict['firestore_value'])
                                     if succeeded:
-                                        row = {field: xml_fs_value}
+                                        field_value = xml_fs_value
                                     else:
-                                        logging.error(f"The Firestore querie '{xml_fs_value}'"
-                                                      f" did not result in a value for XML field '{field}'"
-                                                      f" in collection {collection_name}")
-                                        return False
+                                        # Check if the field "if_not_exists" is defined
+                                        if fs_dict.get("if_not_exists"):
+                                            # Check if in this field, the field "make_logbook" is defined
+                                            logbook_mapping = fs_dict["if_not_exists"].get("make_logbook")
+                                            if logbook_mapping:
+                                                logging.info(f"The Firestore querie '{xml_fs_value}'"
+                                                             f" did not result in a value for XML field '{field}'"
+                                                             f" in collection {collection_name}, "
+                                                             "making logbook.")
+                                                # Make logbooks
+                                                mapped_logbooks = self.map_json(logbook_mapping, input_json)
+                                                # Add logbook to logbooks
+                                                logbooks.extend(mapped_logbooks)
+                                            else:
+                                                logging.error(f"The Firestore querie '{xml_fs_value}'"
+                                                              f" did not result in a value for XML field '{field}'"
+                                                              f" in collection {collection_name}")
+                                                return False
+                                        else:
+                                            logging.error(f"The Firestore querie '{xml_fs_value}'"
+                                                          f" did not result in a value for XML field '{field}'"
+                                                          f" in collection {collection_name}")
+                                            return False
                                 else:
                                     logging.error(f"The firestore_fields field does not contain key '{field}'")
                                     return False
@@ -152,27 +172,45 @@ class Link2Processor(object):
                                         if len(com_json_fields) == 1:
                                             com_json_value = input_json[com_json_fields[0]]
                                             combined_value = com_json_value.replace(' ', '-')
+                                            # If the combination should start with the original JSON field
+                                            if xml_field_config["start_with_field"]:
+                                                combined_value = f"{com_json_fields[0]}: {combined_value}"
                                         else:
                                             for com_json_field in com_json_fields:
                                                 com_json_value = input_json[com_json_field]
                                                 if combined_value:
                                                     combined_value = combined_value + f"-{com_json_value}"
                                                 else:
-                                                    combined_value = com_json_value
+                                                    # If the combination should start with the original JSON field
+                                                    if xml_field_config["start_with_field"]:
+                                                        combined_value = f"{com_json_field}: {combined_value}"
+                                                    else:
+                                                        combined_value = com_json_value
+                                    # If combination method is newline
                                     elif xml_field_config["combination_method"] == "NEWLINE":
                                         for com_json_field in xml_field_config["json_fields"]:
                                             com_json_value = input_json[com_json_field]
+                                            com_json_value = com_json_value.replace('.\\n', '. ')
+                                            com_json_value = com_json_value.replace('\\n', '')
                                             if combined_value:
-                                                combined_value = combined_value + f"\n{com_json_value}"
+                                                # If the combination should start with the original JSON field
+                                                if xml_field_config["start_with_field"]:
+                                                    combined_value = combined_value + f"\n\n{com_json_field}: {com_json_value}"
+                                                else:
+                                                    combined_value = combined_value + f"\n\n{com_json_value}"
                                             else:
-                                                combined_value = com_json_value
+                                                # If the combination should start with the original JSON field
+                                                if xml_field_config["start_with_field"]:
+                                                    combined_value = f"{com_json_field}: {com_json_value}"
+                                                else:
+                                                    combined_value = com_json_value
                                     else:
                                         logging.error(f"Combination method for field {field} is not recognized")
                                         return False
                                 else:
                                     logging.error(f"The combined_fields field does not contain XML field {field}")
                                     return False
-                                row = {field: combined_value}
+                                field_value = combined_value
                             else:
                                 logging.error("The config contains the value COMBINED but the combined_fields field is not defined")
                                 return False
@@ -180,29 +218,34 @@ class Link2Processor(object):
                         elif field_json == "TICKETNR":
                             # Check what the field is that should be mapped to the ticket_number_field
                             # Check if there's an ticket number field defined
-                            ticket_number_field = self.mapping_json[xml_root].get('ticket_number_field')
+                            ticket_number_field = mapping_json[xml_root].get('ticket_number_field')
                             if ticket_number_field:
                                 ticket_nr = self.get_ticket_nr(ticket_number_field, input_json)
                                 if ticket_nr:
-                                    row = {field: ticket_nr}
+                                    field_value = ticket_nr
                                 else:
                                     return False
                             else:
                                 logging.error("Ticket number is needed but ticket number field is not defined")
                                 return False
                         else:
-                            if field_map == "None" or not field_map:
-                                row = {field: ""}
-                            else:
-                                row = {field: field_map}
+                            field_value = input_json.get(field_json)
+                            if field_value == "None" or not field_value:
+                                field_value = ""
+                        row = {field: field_value}
                         json_subelement.update(row)
                     xml_json = {xml_root: {xml_root_sub: json_subelement}}
-                output_jsons.append(xml_json)
+            # Append the filled out json and its filename
+            xml_and_fn = []
+            xml_and_fn.append(xml_json)
+            filename_xml = self.make_filename(mapping_json[xml_root], input_json)
+            xml_and_fn.append(filename_xml)
+            output_jsons.append(xml_and_fn)
+        output_jsons.extend(logbooks)
         return output_jsons
 
     def json_to_fileshare(self, mapped_json, destfilepath):
-        # JSON to XML
-        sourcefile = xmltodict.unparse(mapped_json, encoding='ISO-8859-1')
+        sourcefile = xmltodict.unparse(mapped_json, encoding='ISO-8859-1', pretty=True)
         # Put file on fileshare
         logging.info(f"Putting {destfilepath} on //{self.storageaccount}/{self.destshare}")
         file_on_share = self.share.get_file_client(destfilepath)
@@ -238,46 +281,39 @@ class Link2Processor(object):
         addition = addition.replace(" ", "")
         return street, number, addition
 
-    def msg_to_fileshare(self, msg):
+    def make_filename(self, sub_root_mapping, msg):
+        # Get the filename field
+        file_name_field = sub_root_mapping['xml_filename']
+        # If filename contains "TICKETNR", it should be changed into the ticket number
+        if "TICKETNR" in file_name_field:
+            # Check if there's an ticket number field defined
+            ticket_number_field = sub_root_mapping.get('ticket_number_field')
+            if ticket_number_field:
+                file_name_field = file_name_field.replace("TICKETNR", self.get_ticket_nr(ticket_number_field, msg))
+            else:
+                logging.error("Ticket number is needed but ticket number field is not defined")
+                return False
+        # If filename contains "GUID", it should be changed into a GUID
+        if "GUID" in file_name_field:
+            guid = str(uuid.uuid4())
+            file_name_field = file_name_field.replace("GUID", guid)
+        return file_name_field
+
+    def msg_to_fileshare(self, mapping_json, msg):
         # Check if storage account is set
         if self.storageaccount:
             # Map the message to XMLs
-            mapped_jsons = self.map_json(msg)
+            mapped_jsons = self.map_json(mapping_json, msg)
             if not mapped_jsons:
                 return False
             # For every kind of XML file
-            field_count = 0
-            for xml_root in self.mapping_json:
-                for xml_root_sub in self.mapping_json[xml_root]:
-                    # If the sub element is not 'xml_filename', 'address_split'
-                    # or 'ticket_number_field' or 'hardcoded_fields'
-                    # or 'firestore_fields' or 'combined_fields'
-                    if xml_root_sub != "xml_filename" and \
-                       xml_root_sub != "address_split" and \
-                       xml_root_sub != "ticket_number_field" and \
-                       xml_root_sub != "hardcoded_fields" and \
-                       xml_root_sub != "firestore_fields" and \
-                       xml_root_sub != "combined_fields":
-                        # Get the filename field
-                        file_name_field = self.mapping_json[xml_root]['xml_filename']
-                        # If filename contains "TICKETNR", it should be changed into the ticket number
-                        if "TICKETNR" in file_name_field:
-                            # Check if there's an ticket number field defined
-                            ticket_number_field = self.mapping_json[xml_root].get('ticket_number_field')
-                            if ticket_number_field:
-                                file_name_field = file_name_field.replace("TICKETNR", self.get_ticket_nr(ticket_number_field, msg))
-                            else:
-                                logging.error("Ticket number is needed but ticket number field is not defined")
-                                return False
-                        # If filename contains "GUID", it should be changed into a GUID
-                        if "GUID" in file_name_field:
-                            guid = str(uuid.uuid4())
-                            file_name_field = file_name_field.replace("GUID", guid)
-                        # Make filename
-                        address_destfilepath = f"{self.folder_prefix}{file_name_field}.xml"
-                        # Put jsons on Azure Fileshare
-                        self.json_to_fileshare(mapped_jsons[field_count], address_destfilepath)
-                    field_count = field_count + 1
+            for dict_and_fn in mapped_jsons:
+                filled_in_json = dict_and_fn[0]
+                xml_filename = dict_and_fn[1]
+                # Make filename
+                address_destfilepath = f"{self.folder_prefix}{xml_filename}.xml"
+                # Put jsons on Azure Fileshare
+                self.json_to_fileshare(filled_in_json, address_destfilepath)
         else:
             logging.info("No storage account is set")
         return True
@@ -287,10 +323,10 @@ class Link2Processor(object):
 
         if isinstance(selector_data, list):
             for data in selector_data:
-                if not self.msg_to_fileshare(data):
+                if not self.msg_to_fileshare(self.mapping, data):
                     logging.error("Message is not processed")
         elif isinstance(selector_data, dict):
-            if not self.msg_to_fileshare(selector_data):
+            if not self.msg_to_fileshare(self.mapping, selector_data):
                 logging.error("Message is not processed")
         else:
             logging.error("Message is not a list or a dictionary")

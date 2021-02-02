@@ -108,7 +108,15 @@ It should look as follows:
           {"firestore_field_2": "json_field_2"},
           {"firestore_field_etcetera": "json_field_etcetara"}
       ],
-      "firestore_value": "firestore_field_value"
+      "firestore_value": "firestore_field_value",
+      "if_not_exists": {
+          "make_logbook": {
+              "xml_root": {
+                  "xml_subroot": {
+                  }
+              }
+          }
+      }
     }
   }
 }
@@ -118,10 +126,12 @@ Where:
       ```firestore_collection``` is the collection in the firestore where the value should be looked up in.
       ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.
       ```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
+      ```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist.  
 
 ```combined_fields``` This field contains XML fields that should be combined from fields from the published message defined in
 ```json_fields```. If this is a list with only 1 value, the combination method will be used to combine all the words in the field.  
-The ```combination_method``` can be ```HYPHEN``` or ```NEWLINE```.
+The ```combination_method``` can be ```HYPHEN``` or ```NEWLINE```.  
+If the field ```start_with_field``` is set to true, the combination will be done by first adding the field name.  
 It should look as follows:
 ~~~JSON
 {
@@ -132,7 +142,8 @@ It should look as follows:
               "json_field_2",
               "json_field_etcetera"
           ],
-          "combination_method": "HYPHEN or NEWLINE"
+          "combination_method": "HYPHEN or NEWLINE",
+          "start_with_field": true
       }
   }
 }
@@ -165,7 +176,7 @@ Below is a full example of a mapping JSON.
         "xml_filename": "Address_TICKETNR_GUID",
         "ticket_number_field": "ticket_number",
         "address_split": {
-            "adres": {
+            "address": {
                 "streetname": "StreetName",
                 "number": "Number",
                 "addition": "Addition"
@@ -177,7 +188,7 @@ Below is a full example of a mapping JSON.
         "combined_fields": {
             "Code": {
                 "json_fields": [
-                    "adres"
+                    "address"
                 ],
                 "combination_method": "HYPHEN"
             }
@@ -209,7 +220,22 @@ Below is a full example of a mapping JSON.
                   {"incoming_job_type_firestore": "incoming_job_type"},
                   {"incoming_name_field_firestore": "incoming_name_field"}
               ],
-              "firestore_value": "outgoing_business_unit"
+              "firestore_value": "outgoing_business_unit",
+              "if_not_exists": {
+                  "make_logbook": {
+                      "logbooks": {
+                          "logbook": {
+                              "TicketNumber": "ticket_number",
+                              "LogboekTekst": "HARDCODED"
+                            },
+                            "xml_filename": "Logbook_TICKETNR_GUID",
+                            "ticket_number_field": "ticket_number",
+                            "hardcoded_fields": {
+                                "LogboekTekst": "Made logbook file."
+                            }
+                      }
+                  }
+              }
           }
       },
       "combined_fields": {
@@ -218,10 +244,31 @@ Below is a full example of a mapping JSON.
                     "name",
                     "email_address"
                 ],
-                "combination_method": "NEWLINE"
+                "combination_method": "NEWLINE",
+                "start_with_field": false
             }
       }
   }
+}
+~~~
+
+### Example of incoming message
+~~~
+{
+        'gobits': [
+            {
+            'processed': '2021-01-01T00:00:00.000Z'
+            }
+        ],
+        'parsed_email': {
+            'ticket_number': '123456',
+            'postalcode': '1234HP',
+            'address': 'an address 1',
+            'name': 'A. nonymous',
+            'email_address': 'anonymous@a.nonymous',
+            'incoming_job_type': 'job',
+            'incoming_name_field': 'name'
+        }
 }
 ~~~
 

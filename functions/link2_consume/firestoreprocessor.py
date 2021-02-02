@@ -12,6 +12,8 @@ class FirestoreProcessor(object):
         query_fs = self.db_client.collection(collection_name)
 
         query_ids = ""
+        if not ids:
+            return False, query_ids
         for id_dict in ids:
             for fs_id in id_dict:
                 # Remove brackets from ID
