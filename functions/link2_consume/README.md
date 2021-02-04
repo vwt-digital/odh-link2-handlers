@@ -156,6 +156,7 @@ The following field values are recognized by the code:
 ```ADDRESS_SPLIT``` If you fill in this value, the code will split the address as defined in the field "address_split".
 ```FIRESTORE``` If you fill in this value, the code will look up the value as defined in the field "firestore_fields".
 ```COMBINED``` This value shows the program that the value should be looked up in the field "combined_fields".
+If multiple field values should be used, they should be split by a hyphen ('-').
 
 ### Example of mapping
 Below is a full example of a mapping JSON.
@@ -226,12 +227,12 @@ Below is a full example of a mapping JSON.
                       "logbooks": {
                           "logbook": {
                               "TicketNumber": "ticket_number",
-                              "LogboekTekst": "HARDCODED"
+                              "LogboekTekst": "HARDCODED-name"
                             },
                             "xml_filename": "Logbook_TICKETNR_GUID",
                             "ticket_number_field": "ticket_number",
                             "hardcoded_fields": {
-                                "LogboekTekst": "Made logbook file."
+                                "LogboekTekst": "Made logbook file for contact:"
                             }
                       }
                   }
