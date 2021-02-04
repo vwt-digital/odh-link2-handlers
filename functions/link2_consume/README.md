@@ -148,6 +148,26 @@ It should look as follows:
   }
 }
 ~~~
+The field ```prefixes``` checks whether a value has a certain prefix.
+It should look as follows:
+~~~JSON
+{
+    "prefixes": {
+        "xml_field_1": {
+            "message_field": "json_field_1",
+            "prefix": "prefix value"
+        },
+        "xml_field_2": {
+            "message_field": "json_field_2",
+            "prefix": "prefix value"
+        },
+        "xml_field_etcetera": {
+            "message_field": "json_field_etcetera",
+            "prefix": "prefix value"
+        }
+    }
+}
+~~~
 
 ### Extra field values
 The following field values are recognized by the code:
@@ -155,8 +175,9 @@ The following field values are recognized by the code:
 ```HARDCODED``` If you fill in this value, the code will look the field up in the "hardcoded_fields" fields in the mapping.
 ```ADDRESS_SPLIT``` If you fill in this value, the code will split the address as defined in the field "address_split".
 ```FIRESTORE``` If you fill in this value, the code will look up the value as defined in the field "firestore_fields".
-```COMBINED``` This value shows the program that the value should be looked up in the field "combined_fields".
+```COMBINED``` This value shows the code that the value should be looked up in the field "combined_fields".
 If multiple field values should be used, they should be split by a hyphen ('-').
+```PREFIX``` If you fill in this value, the code will look up the prefix that should be used for this value in the "prefixes" field
 
 ### Example of mapping
 Below is a full example of a mapping JSON.
@@ -200,6 +221,7 @@ Below is a full example of a mapping JSON.
           "TicketNumber": "ticket_number",
           "Name": "name",
           "Email": "email_address",
+          "Phonenumber": "PREFIX",
           "JobType": "FIRESTORE",
           "BusinessUnit": "FIRESTORE",
           "CustomerTicket": "TICKETNR",
@@ -248,6 +270,12 @@ Below is a full example of a mapping JSON.
                 "combination_method": "NEWLINE",
                 "start_with_field": false
             }
+      },
+      "prefixes": {
+            "Phonenumber": {
+                "message_field": "phonenumber",
+                "prefix": "06"
+            }
       }
   }
 }
@@ -267,6 +295,7 @@ Below is a full example of a mapping JSON.
             'address': 'an address 1',
             'name': 'A. nonymous',
             'email_address': 'anonymous@a.nonymous',
+            'phonenumber': '0612345678',
             'incoming_job_type': 'job',
             'incoming_name_field': 'name'
         }

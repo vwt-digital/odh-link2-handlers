@@ -208,6 +208,28 @@ class Link2Processor(object):
             return False, field_value
         return True, field_value
 
+    def prefix_value(self, field, prefixes_field, input_json):
+        field_value = ""
+        if not prefixes_field:
+            logging.error("The config contains the value PREFIX but the 'prefixes' field is not defined")
+            return False, field_value
+        xml_dict = prefixes_field.get(field)
+        if not xml_dict:
+            logging.error(f"The field {field} cannot be found in the 'prefixes' field")
+            return False, field_value
+        # Check what the value is of the field
+        message_field = xml_dict.get('message_field')
+        field_value = input_json.get(message_field)
+        if field_value == "None" or not field_value:
+            logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
+            return False, field_value
+        # Check if the value starts with the specified prefix
+        prefix = xml_dict['prefix']
+        if not field_value.startswith(prefix):
+            logging.error(f"The field {message_field} in the message does not start with the defined prefix in 'phonenumber_field'")
+            return False, field_value
+        return True, field_value
+
     def message_value(self, input_json, field_json):
         field_value = ""
         field_value = input_json.get(field_json)
@@ -235,17 +257,20 @@ class Link2Processor(object):
                     address_addition = [address_split[address_field]['addition'], addition]
             firestore_fields = mapping_json[xml_root].get('firestore_fields')
             combined_fields = mapping_json[xml_root].get('combined_fields')
+            prefixes_field = mapping_json[xml_root].get('prefixes')
             # Get the sub element
             for xml_root_sub in mapping_json[xml_root]:
                 # If the sub element is not 'xml_filename', 'address_split'
                 # or 'ticket_number_field' or 'hardcoded_fields'
                 # or 'firestore_fields' or 'combined_fields'
+                # or 'phonenumber'
                 if xml_root_sub != "xml_filename" and \
                    xml_root_sub != "address_split" and \
                    xml_root_sub != "ticket_number_field" and \
                    xml_root_sub != "hardcoded_fields" and \
                    xml_root_sub != "firestore_fields" and \
-                   xml_root_sub != "combined_fields":
+                   xml_root_sub != "combined_fields" and \
+                   xml_root_sub != "prefixes":
                     json_subelement = {}
                     for field in mapping_json[xml_root][xml_root_sub]:
                         field_json = mapping_json[xml_root][xml_root_sub][field]
@@ -292,6 +317,13 @@ class Link2Processor(object):
                             # If value in part of field_json is "TICKETNR"
                             elif fj_part == "TICKETNR":
                                 success, new_value = self.ticket_number_value(mapping_json, xml_root, input_json)
+                                if success:
+                                    field_value = field_value + new_value
+                                else:
+                                    return False
+                            # If value in part of field_json is "PREFIX"
+                            elif fj_part == "PREFIX":
+                                success, new_value = self.prefix_value(field, prefixes_field, input_json)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
