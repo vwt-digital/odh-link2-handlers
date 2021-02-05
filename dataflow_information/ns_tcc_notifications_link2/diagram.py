@@ -8,7 +8,7 @@ from diagrams.azure.storage import BlobStorage
 
 from diagrams.generic.storage import Storage as GenericStorage
 
-with Diagram("NS TCC Notifications to Link2", show=False):
+with Diagram("Restingest NS TCC Notifications to Link2", show=False):
     with Cluster("GCP Operational Data Hub Platform"):
         with Cluster("Operational Data Hub"):
             with Cluster("vwt-p-gew1-\nodh-hub-\nns-tcc-notifications"):
@@ -26,11 +26,11 @@ with Diagram("NS TCC Notifications to Link2", show=False):
             function_3 = Functions("vwt-p-gew1-\nns-link2-int-\nconsume-tcc-notifications-to-link2-func")
 
     with Cluster("Azure"):
-        with Cluster("infrasal2fst01"):
-            with Cluster("serviceglast01"):
-                storage_2 = BlobStorage("Link2-\nService-Glas-Test/\nImport")
+        with Cluster("infrasal2fsp01"):
+            with Cluster("serviceglasp01"):
+                azure_import = BlobStorage("Link2-\nService-Glas/\nImport")
 
     with Cluster("Link2"):
         storage_3 = GenericStorage("Import")
 
-    pubsub_1 >> Edge(label="Consume") >> function_3 >> storage_2 >> Edge(label="Link2 import script from VWT Operations") >> storage_3
+    pubsub_1 >> Edge(label="Consume") >> function_3 >> azure_import >> Edge(label="Link2 import script from VWT Operations") >> storage_3
