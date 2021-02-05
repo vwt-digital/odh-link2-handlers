@@ -92,10 +92,23 @@ class Link2Processor(object):
                 for id_dict in fs_dict['firestore_ids']:
                     for fs_id in id_dict:
                         json_field = id_dict[fs_id]
-                        # Check if json value exists in the input json
-                        json_value = input_json.get(json_field)
-                        if json_value:
+                        # Check if json_field is a string or a dictionary
+                        if isinstance(json_field, str):
+                            # If it is a string
+                            # Check if json value exists in the input json
+                            json_value = input_json.get(json_field)
+                            if json_value:
+                                json_values.append({fs_id: json_value})
+                        elif isinstance(json_field, dict):
+                            # If it is a dictionary
+                            # The value has to be looked up in another Firestore collection
+                            success, json_value, new_logbooks = self.firestore_value(field, json_field, input_json, logbooks)
+                            if success is False:
+                                logging.error(f"The field {field} contains a field that has to be looked up in a Firestore collections"
+                                              " but there was an error.")
+                                return False
                             json_values.append({fs_id: json_value})
+                            logbooks = new_logbooks
                 # Get the value of the XML dict from the firestore
                 collection_name = fs_dict['firestore_collection']
                 succeeded, xml_fs_value = self.gcp_firestore.get_value(collection_name, json_values,

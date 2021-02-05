@@ -106,6 +106,13 @@ It should look as follows:
       "firestore_ids": [
           {"firestore_field_1": "json_field_1"},
           {"firestore_field_2": "json_field_2"},
+          {"firestore_field_3": {
+                        "firestore_collection": "firestore_collection_name_1",
+                        "firestore_ids": [
+                            {"firestore_field_1": "json_field_1"}
+                        ],
+                        "firestore_value": "firestore_field_value"
+          }},
           {"firestore_field_etcetera": "json_field_etcetara"}
       ],
       "firestore_value": "firestore_field_value",
@@ -123,8 +130,12 @@ It should look as follows:
 ~~~
 Where:  
       ```xml_field``` is the field in the XML for which the value should be looked up.  
-      ```firestore_collection``` is the collection in the firestore where the value should be looked up in.
-      ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.
+      ```firestore_collection``` is the collection in the firestore where the value should be looked up in.  
+      ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.  
+       The IDs in the Firestore, this ID can be:  
+            - A string, then it will just be an ID in the current firestore_collection  
+            - A dictionary, then the value will be looked up in another Firestore firestore_collection.  
+            This dictionary should look the same as a normal "firestore_fields" dictionary list item  
       ```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
       ```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist.  
 
@@ -226,6 +237,7 @@ Below is a full example of a mapping JSON.
           "BusinessUnit": "FIRESTORE",
           "CustomerTicket": "TICKETNR",
           "ContactInformation": "COMBINED",
+          "NextJob": "FIRESTORE"
       },
       "xml_filename": "Activity_TICKETNR_GUID",
       "ticket_number_field": "ticket_number",
@@ -259,6 +271,20 @@ Below is a full example of a mapping JSON.
                       }
                   }
               }
+          },
+          "NextJob": {
+              "firestore_collection": "jobs_collection",
+              "firestore_ids": [
+                  {"incoming_name_field_firestore": "incoming_name_field"},
+                  {"incoming_job_type_firestore": {
+                        "firestore_collection": "job_types_collection",
+                        "firestore_ids": [
+                            {"incoming_job_type_firestore": "incoming_job_type"}
+                        ],
+                        "firestore_value": "outgoing_job_type"
+                  }},
+              ],
+              "firestore_value": "outgoing_next_job"
           }
       },
       "combined_fields": {
