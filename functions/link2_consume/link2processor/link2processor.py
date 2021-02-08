@@ -156,7 +156,7 @@ class Link2Processor(object):
             if xml_field_config:
                 # If combination method is hypen
                 if xml_field_config["combination_method"] == "HYPHEN":
-                    com_json_fields = xml_field_config["json_fields"]
+                    com_json_fields = xml_field_config["to_combine_fields"]
                     if len(com_json_fields) == 1:
                         com_json_value = input_json[com_json_fields[0]]
                         combined_value = com_json_value.replace(' ', '-')
@@ -176,7 +176,7 @@ class Link2Processor(object):
                                     combined_value = com_json_value
                 # If combination method is newline
                 elif xml_field_config["combination_method"] == "NEWLINE":
-                    for com_json_field in xml_field_config["json_fields"]:
+                    for com_json_field in xml_field_config["to_combine_fields"]:
                         com_json_value = input_json[com_json_field]
                         com_json_value = com_json_value.replace('.\\n', '. ')
                         com_json_value = com_json_value.replace('\\n', '')
@@ -196,11 +196,12 @@ class Link2Processor(object):
                     logging.error(f"Combination method for field {field} is not recognized")
                     return False, field_value
             else:
-                logging.error(f"The combined_fields field does not contain XML field {field}")
+                logging.error(f"The 'to_combine_fields' field does not contain field {field}")
                 return False, field_value
             field_value = combined_value
         else:
-            logging.error("The config contains the value COMBINED but the 'combined_fields' field is not defined")
+            logging.error("The config contains the value COMBINED_JSON or COMBINED_XML but"
+                          " the 'combined_json_fields' or 'combined_xml_fields' field are not defined")
             return False, field_value
         return True, field_value
 
@@ -268,7 +269,8 @@ class Link2Processor(object):
                     address_number = [address_split[address_field]['number'], number]
                     address_addition = [address_split[address_field]['addition'], addition]
             firestore_fields = mapping_json[xml_root].get('firestore_fields')
-            combined_fields = mapping_json[xml_root].get('combined_fields')
+            combined_json_fields = mapping_json[xml_root].get('combined_json_fields')
+            combined_xml_fields = mapping_json[xml_root].get('combined_xml_fields')
             prefixes_field = mapping_json[xml_root].get('prefixes')
             # Get the sub element
             for xml_root_sub in mapping_json[xml_root]:
@@ -281,9 +283,11 @@ class Link2Processor(object):
                    xml_root_sub != "ticket_number_field" and \
                    xml_root_sub != "hardcoded_fields" and \
                    xml_root_sub != "firestore_fields" and \
-                   xml_root_sub != "combined_fields" and \
+                   xml_root_sub != "combined_json_fields" and \
+                   xml_root_sub != "combined_xml_fields" and \
                    xml_root_sub != "prefixes":
                     json_subelement = {}
+                    xml_combined_fields = []
                     for field in mapping_json[xml_root][xml_root_sub]:
                         field_json = mapping_json[xml_root][xml_root_sub][field]
                         row = {}
@@ -319,13 +323,19 @@ class Link2Processor(object):
                                     field_value = field_value + new_value
                                 else:
                                     return False
-                            # If value in part of field_json in "COMBINED"
-                            elif fj_part == "COMBINED":
-                                success, new_value = self.combined_value(field, combined_fields, input_json)
+                            # If value in part of field_json in "COMBINED_JSON"
+                            elif fj_part == "COMBINED_JSON":
+                                success, new_value = self.combined_value(field, combined_json_fields, input_json)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
                                     return False
+                            # If value in part of field_json in "COMBINED_XML"
+                            elif fj_part == "COMBINED_XML":
+                                # Set new_value to COMBINED_XML, the field will be a combination of XML field values
+                                success = True
+                                new_value = "COMBINED_XML"
+                                xml_combined_fields.append(field)
                             # If value in part of field_json is "TICKETNR"
                             elif fj_part == "TICKETNR":
                                 success, new_value = self.ticket_number_value(mapping_json, xml_root, input_json)
@@ -348,6 +358,14 @@ class Link2Processor(object):
                                     return False
                         row = {field: field_value}
                         json_subelement.update(row)
+                    # Loop through xml_combined_fields list
+                    for xml_field in xml_combined_fields:
+                        # This field should be a combination of other XML fields
+                        success, new_value = self.combined_value(xml_field, combined_xml_fields, json_subelement)
+                        if success:
+                            json_subelement[xml_field] = new_value
+                        else:
+                            return False
                     xml_json = {xml_root: {xml_root_sub: json_subelement}}
             # Append the filled out json and its filename
             xml_and_fn = []

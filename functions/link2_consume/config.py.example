@@ -30,7 +30,10 @@ SOURCEPATH_FIELD = "published-message-field"
 #   - It is possible that a value cannot be found in the Firestore, in that case the field "if_not_exists" can be defined
 #     This field can have the field "make_logbook", which will make a logbook file if the value cannot be found in the firestore
 #     The logbook field works the same as the other mapping fields
-# The field "combined_fields" contains XML fields which have as their value a combination of fields of the published message
+# The field "combined_json_fields" contains XML fields which have as their value a combination of fields of the published message
+#   - The combination method can be NEWLINE or HYPHEN
+#   - If the field "start_with_field" is true, the combination will be done by first adding the field name
+# The field "combined_xml_fields" contains XML fields which have as their value a combination of fields of the final XML file
 #   - The combination method can be NEWLINE or HYPHEN
 #   - If the field "start_with_field" is true, the combination will be done by first adding the field name
 # The field "prefixes" contains fields from the message in the field 'message_field' and its prefix in the field 'prefix'
@@ -82,12 +85,23 @@ MAPPING = {
                 }
             }
         },
-        "combined_fields": {
+        "combined_json_fields": {
             "xml_field": {
                 "json_fields": [
                     "json_field_1",
                     "json_field_2",
                     "json_field_etcetera"
+                ],
+                "combination_method": "HYPHEN or NEWLINE",
+                "start_with_field": True or False
+            }
+        },
+        "combined_xml_fields": {
+            "xml_field": {
+                "xml_fields": [
+                    "xml_field_1",
+                    "xml_field_2",
+                    "xml_field_etcetera"
                 ],
                 "combination_method": "HYPHEN or NEWLINE",
                 "start_with_field": True or False
