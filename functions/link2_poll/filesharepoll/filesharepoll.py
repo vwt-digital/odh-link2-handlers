@@ -42,13 +42,6 @@ class FileSharePoll(object):
             files_found = self.check_for_files()
             correct_files = []
             for file_found in files_found:
-                # Do not add files that do not start with the correct value
-                correct_start = False
-                for name_start in self.required_name_starts:
-                    if file_found['name'].startswith(name_start):
-                        correct_start = True
-                if correct_start is False:
-                    continue
                 # Then add every file that has the correct extension, is not a directory
                 # and has a size of more than 0
                 if file_found['name'].endswith(self.required_extension) and \
@@ -66,7 +59,6 @@ class FileSharePoll(object):
                 if file_lease:
                     stream = file_on_share.download_file()
                     fileshare_file = stream.readall()
-                    print(correct_file)
                     # Then put the file on the GCP bucket
                     self.put_file_on_bucket(correct_file, fileshare_file)
                     # Remove the original file from the File Share
