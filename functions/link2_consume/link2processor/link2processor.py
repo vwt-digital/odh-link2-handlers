@@ -4,10 +4,12 @@ from config import MESSAGE_PROPERTIES, AZURE_STORAGEACCOUNT, \
 import os
 import logging
 import xmltodict
-import re
 import uuid
+import re
 
-from firestoreprocessor import FirestoreProcessor
+from .other_values import OtherValuesProcessor
+from .firestore_values import FirestoreValuesProcessor
+from .combine_values import CombinedValuesProcessor
 
 from azure.storage.fileshare import ShareClient, ShareLeaseClient
 from azure.core.exceptions import HttpResponseError
@@ -37,221 +39,12 @@ class Link2Processor(object):
                                      share_name=self.destshare, credential=self.storagekey)
         self.sourcepath_field = SOURCEPATH_FIELD
         self.mapping = MAPPING
-        self.gcp_firestore = FirestoreProcessor()
+        self.other_values_processor = OtherValuesProcessor(self)
+        self.firestore_values_processor = FirestoreValuesProcessor(self)
+        self.combined_values_processor = CombinedValuesProcessor(self)
 
-    def get_ticket_nr(self, ticket_number_field, input_json):
-        # Get all digits
-        digit_list = re.findall(r'\d+', input_json[ticket_number_field])
-        # Check if there's only 1 digit part
-        if len(digit_list) > 1:
-            logging.error("Multiple digit parts in ticket number")
-            return False
-        # Return ticket number
-        return digit_list[0]
-
-    def hardcoded_value(self, mapping_json, xml_root, field):
-        field_value = ""
-        # Check if field is in "hardcoded_fields"
-        hardcoded_fields = mapping_json[xml_root].get("hardcoded_fields")
-        if hardcoded_fields:
-            if field in hardcoded_fields:
-                field_value = hardcoded_fields[field]
-            else:
-                logging.error(f"The 'hardcoded_fields' field does not contain field {field}")
-                return False, field_value
-        else:
-            logging.error("The config contains the value HARDCODED but the 'hardcoded_fields' field is not defined")
-            return False, field_value
-        return True, field_value
-
-    def address_split_value(self, field, address_street, address_number, address_addition):
-        field_value = ""
-        # Check if address, number and addition are defined
-        if address_street and address_number and address_addition:
-            if field == address_street[0]:
-                field_value = address_street[1]
-            elif field == address_number[0]:
-                field_value = address_number[1]
-            elif field == address_addition[0]:
-                field_value = address_addition[1]
-        else:
-            logging.error("Field should be split conform address split but address_split field is not defined")
-            return False, field_value
-        return True, field_value
-
-    def firestore_value(self, field, firestore_fields, input_json, logbooks):
-        field_value = ""
-        # The value can be looked up in the firestore
-        # Get the dictionary belonging to the value
-        if not firestore_fields:
-            logging.error("The config contains the value FIRESTORE but the 'firestore_fields' field is not defined")
-            return False, "", []
-        # Get the dictionary belonging to the XML field
-        fs_dict = firestore_fields.get(field)
-        if not fs_dict:
-            logging.error(f"The 'firestore_fields' field does not contain key '{field}'")
-            return False, "", []
-        # Get the right values from the JSON
-        json_values = []
-        for id_dict in fs_dict['firestore_ids']:
-            for fs_id in id_dict:
-                json_field = id_dict[fs_id]
-                # Check if json_field is a string or a dictionary
-                if isinstance(json_field, str):
-                    # If it is a string
-                    # Check if json value exists in the input json
-                    json_value = input_json.get(json_field)
-                    if not json_value:
-                        logging.error(f"The field {json_field} cannot be found in the message")
-                        return False, "", []
-                    json_values.append({fs_id: json_value})
-                elif isinstance(json_field, dict):
-                    # If it is a dictionary
-                    # The value has to be looked up in another Firestore collection
-                    success, json_value, new_logbooks = self.firestore_value(field, json_field, input_json, logbooks)
-                    if success is False:
-                        logging.error(f"The field {field} contains a field that has to be looked up in a Firestore collection"
-                                      " but there was an error.")
-                        return False, "", []
-                    json_values.append({fs_id: json_value})
-                    logbooks = new_logbooks
-        # Get the value of the XML dict from the firestore
-        collection_name = fs_dict['firestore_collection']
-        succeeded, xml_fs_value = self.gcp_firestore.get_value(collection_name, json_values,
-                                                               fs_dict['firestore_value'])
-        if succeeded:
-            field_value = xml_fs_value
-        else:
-            # Check if the field "if_not_exists" is defined
-            if not fs_dict.get("if_not_exists"):
-                logging.error(f"The Firestore querie '{xml_fs_value}'"
-                              f" did not result in a value for XML field '{field}'"
-                              f" in collection {collection_name}")
-                return False, "", []
-            # Check if in this field, the field "make_logbook" is defined
-            logbook_mapping = fs_dict["if_not_exists"].get("make_logbook")
-            if not logbook_mapping:
-                logging.error(f"The Firestore querie '{xml_fs_value}'"
-                              f" did not result in a value for XML field '{field}'"
-                              f" in collection {collection_name}")
-                return False, "", []
-            # If logbook has to be made
-            logging.info(f"The Firestore querie '{xml_fs_value}'"
-                         f" did not result in a value for XML field '{field}'"
-                         f" in collection {collection_name}, "
-                         "making logbook.")
-            # Make logbooks
-            mapped_logbooks = self.map_json(logbook_mapping, input_json)
-            # Add logbook to logbooks
-            logbooks.extend(mapped_logbooks)
-        return True, field_value, logbooks
-
-    def combined_value(self, field, combined_fields, input_json):
-        field_value = ""
-        # Get the dictionary belonging to the value
-        if combined_fields:
-            combined_value = ""
-            # Get the XML field configuration
-            xml_field_config = combined_fields.get(field)
-            if xml_field_config:
-                # If combination method is hypen
-                if xml_field_config["combination_method"] == "HYPHEN":
-                    com_json_fields = xml_field_config["to_combine_fields"]
-                    if len(com_json_fields) == 1:
-                        com_json_value = input_json[com_json_fields[0]]
-                        combined_value = com_json_value.replace(' ', '-')
-                        # If the combination should start with the original JSON field
-                        if xml_field_config["start_with_field"]:
-                            combined_value = f"{com_json_fields[0]}: {combined_value}"
-                    else:
-                        for com_json_field in com_json_fields:
-                            com_json_value = input_json[com_json_field]
-                            if combined_value:
-                                combined_value = combined_value + f"-{com_json_value}"
-                            else:
-                                # If the combination should start with the original JSON field
-                                if xml_field_config["start_with_field"]:
-                                    combined_value = f"{com_json_field}: {combined_value}"
-                                else:
-                                    combined_value = com_json_value
-                # If combination method is newline
-                elif xml_field_config["combination_method"] == "NEWLINE":
-                    for com_json_field in xml_field_config["to_combine_fields"]:
-                        com_json_value = input_json[com_json_field]
-                        com_json_value = com_json_value.replace('.\\n', '. ')
-                        com_json_value = com_json_value.replace('\\n', '')
-                        if combined_value:
-                            # If the combination should start with the original JSON field
-                            if xml_field_config["start_with_field"]:
-                                combined_value = combined_value + f"\n\n{com_json_field}: {com_json_value}"
-                            else:
-                                combined_value = combined_value + f"\n\n{com_json_value}"
-                        else:
-                            # If the combination should start with the original JSON field
-                            if xml_field_config["start_with_field"]:
-                                combined_value = f"{com_json_field}: {com_json_value}"
-                            else:
-                                combined_value = com_json_value
-                else:
-                    logging.error(f"Combination method for field {field} is not recognized")
-                    return False, field_value
-            else:
-                logging.error(f"The 'to_combine_fields' field does not contain field {field}")
-                return False, field_value
-            field_value = combined_value
-        else:
-            logging.error("The config contains the value COMBINED_JSON or COMBINED_XML but"
-                          " the 'combined_json_fields' or 'combined_xml_fields' field are not defined")
-            return False, field_value
-        return True, field_value
-
-    def ticket_number_value(self, mapping_json, xml_root, input_json):
-        field_value = ""
-        # Check what the field is that should be mapped to the ticket_number_field
-        # Check if there's an ticket number field defined
-        ticket_number_field = mapping_json[xml_root].get('ticket_number_field')
-        if ticket_number_field:
-            ticket_nr = self.get_ticket_nr(ticket_number_field, input_json)
-            if ticket_nr:
-                field_value = ticket_nr
-            else:
-                return False, field_value
-        else:
-            logging.error("Ticket number is needed but ticket number field is not defined")
-            return False, field_value
-        return True, field_value
-
-    def prefix_value(self, field, prefixes_field, input_json):
-        field_value = ""
-        if not prefixes_field:
-            logging.error("The config contains the value PREFIX but the 'prefixes' field is not defined")
-            return False, field_value
-        xml_dict = prefixes_field.get(field)
-        if not xml_dict:
-            logging.error(f"The field {field} cannot be found in the 'prefixes' field")
-            return False, field_value
-        # Check what the value is of the field
-        message_field = xml_dict.get('message_field')
-        field_value = input_json.get(message_field)
-        if field_value == "None" or not field_value:
-            logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
-            return False, field_value
-        # Check if the value starts with the specified prefix
-        prefix = xml_dict['prefix']
-        if not field_value.startswith(prefix):
-            logging.error(f"The field {message_field} in the message does not start with the defined prefix in 'phonenumber_field'")
-            return False, field_value
-        return True, field_value
-
-    def message_value(self, input_json, field_json):
-        field_value = ""
-        field_value = input_json.get(field_json)
-        if field_value == "None" or not field_value:
-            field_value = ""
-        return True, field_value
-
-    def map_json(self, mapping_json, input_json):
-        output_jsons = []
+    def map_json(self, mapping_json, input_json, only_values_bool):
+        output_list = []
         logbooks = []
         # For every XML root
         for xml_root in mapping_json:
@@ -287,7 +80,6 @@ class Link2Processor(object):
                    xml_root_sub != "combined_xml_fields" and \
                    xml_root_sub != "prefixes":
                     json_subelement = {}
-                    xml_combined_fields = []
                     for field in mapping_json[xml_root][xml_root_sub]:
                         field_json = mapping_json[xml_root][xml_root_sub][field]
                         row = {}
@@ -303,21 +95,23 @@ class Link2Processor(object):
                                 field_value = f"{field_value} "
                             # If value in part of field_json is "HARDCODED"
                             if fj_part == "HARDCODED":
-                                success, new_value = self.hardcoded_value(mapping_json, xml_root, field)
+                                success, new_value = self.other_values_processor.hardcoded_value(mapping_json, xml_root, field)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
                                     return False
                             # If value in part of field_json is "ADDRESS_SPLIT"
                             elif fj_part == "ADDRESS_SPLIT":
-                                success, new_value = self.address_split_value(field, address_street, address_number, address_addition)
+                                success, new_value = self.other_values_processor.address_split_value(field, address_street,
+                                                                                                     address_number, address_addition)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
                                     return False
                             # If value in part of field_json is "FIRESTORE"
                             elif fj_part == "FIRESTORE":
-                                success, new_value, new_logbooks = self.firestore_value(field, firestore_fields, input_json, logbooks)
+                                success, new_value, new_logbooks = self.firestore_values_processor.firestore_value(field, firestore_fields,
+                                                                                                                   input_json, logbooks)
                                 if success:
                                     logbooks = new_logbooks
                                     field_value = field_value + new_value
@@ -325,56 +119,56 @@ class Link2Processor(object):
                                     return False
                             # If value in part of field_json in "COMBINED_JSON"
                             elif fj_part == "COMBINED_JSON":
-                                success, new_value = self.combined_value(field, combined_json_fields, input_json)
+                                success, new_value = self.combined_values_processor.combined_value(field, combined_json_fields, input_json)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
                                     return False
                             # If value in part of field_json in "COMBINED_XML"
                             elif fj_part == "COMBINED_XML":
-                                # Set new_value to COMBINED_XML, the field will be a combination of XML field values
-                                success = True
-                                new_value = "COMBINED_XML"
-                                xml_combined_fields.append(field)
+                                success, new_value = self.combined_values_processor.combined_value_xml(field,
+                                                                                                       combined_xml_fields, input_json)
+                                if success:
+                                    field_value = field_value + new_value
+                                else:
+                                    return False
                             # If value in part of field_json is "TICKETNR"
                             elif fj_part == "TICKETNR":
-                                success, new_value = self.ticket_number_value(mapping_json, xml_root, input_json)
+                                success, new_value = self.other_values_processor.ticket_number_value(mapping_json, xml_root, input_json)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
                                     return False
                             # If value in part of field_json is "PREFIX"
                             elif fj_part == "PREFIX":
-                                success, new_value = self.prefix_value(field, prefixes_field, input_json)
+                                success, new_value = self.other_values_processor.prefix_value(field, prefixes_field, input_json)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
                                     return False
                             elif success is False:
-                                success, new_value = self.message_value(input_json, fj_part)
+                                success, new_value = self.other_values_processor.message_value(input_json, fj_part)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
                                     return False
                         row = {field: field_value}
-                        json_subelement.update(row)
-                    # Loop through xml_combined_fields list
-                    for xml_field in xml_combined_fields:
-                        # This field should be a combination of other XML fields
-                        success, new_value = self.combined_value(xml_field, combined_xml_fields, json_subelement)
-                        if success:
-                            json_subelement[xml_field] = new_value
+                        if only_values_bool is True:
+                            output_list.append(row)
                         else:
-                            return False
-                    xml_json = {xml_root: {xml_root_sub: json_subelement}}
-            # Append the filled out json and its filename
-            xml_and_fn = []
-            xml_and_fn.append(xml_json)
-            filename_xml = self.make_filename(mapping_json[xml_root], input_json)
-            xml_and_fn.append(filename_xml)
-            output_jsons.append(xml_and_fn)
-        output_jsons.extend(logbooks)
-        return output_jsons
+                            json_subelement.update(row)
+                    if only_values_bool is False:
+                        xml_json = {xml_root: {xml_root_sub: json_subelement}}
+            if only_values_bool is False:
+                # Append the filled out json and its filename
+                xml_and_fn = []
+                xml_and_fn.append(xml_json)
+                filename_xml = self.make_filename(mapping_json[xml_root], input_json)
+                xml_and_fn.append(filename_xml)
+                output_list.append(xml_and_fn)
+        if only_values_bool is False:
+            output_list.extend(logbooks)
+        return output_list
 
     def json_to_fileshare(self, mapped_json, destfilepath):
         sourcefile = xmltodict.unparse(mapped_json, encoding='ISO-8859-1', pretty=True)
@@ -421,7 +215,7 @@ class Link2Processor(object):
             # Check if there's an ticket number field defined
             ticket_number_field = sub_root_mapping.get('ticket_number_field')
             if ticket_number_field:
-                file_name_field = file_name_field.replace("TICKETNR", self.get_ticket_nr(ticket_number_field, msg))
+                file_name_field = file_name_field.replace("TICKETNR", self.other_values_processor.get_ticket_nr(ticket_number_field, msg))
             else:
                 logging.error("Ticket number is needed but ticket number field is not defined")
                 return False
@@ -435,7 +229,7 @@ class Link2Processor(object):
         # Check if storage account is set
         if self.storageaccount:
             # Map the message to XMLs
-            mapped_jsons = self.map_json(mapping_json, msg)
+            mapped_jsons = self.map_json(mapping_json, msg, False)
             if not mapped_jsons:
                 return False
             # For every kind of XML file
