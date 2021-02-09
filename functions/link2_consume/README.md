@@ -45,20 +45,7 @@ The mapping parameter is a dictionary which is set up as illustrated below:
       "xml_subroot_field_2": "published_message_field_2",
       "xml_subroot_field_etcetera": "published_message_field_etcetera"
     },
-    "xml_filename": "xml_filename",
-    "ticket_number_field": "published_message_ticket_number_field",
-    "address_split": {
-      "published_message_address_field": {
-          "streetname": "xml_address_field_streetname",
-          "number": "xml_address_field_number",
-          "addition": "xml_address_field_addition"
-      }
-    },
-    "hardcoded_fields": {
-      "xml_subroot_field_1": "hardcoded_value_1",
-      "xml_subroot_field_2": "hardcoded_value_2",
-      "xml_subroot_field_etcetera": "hardcoded_value_etcetera"
-    }
+    "xml_filename": "xml_filename"
   }
 }
 ~~~
@@ -159,17 +146,23 @@ It should look as follows:
   }
 }
 ~~~
-The field ```combined_xml_fields``` works the same as the field ```combined_json_fields``` but it combines the final XML fields instead
- of the fields from the published message.
+The field ```combined_xml_fields``` combines the final XML fields. It needs an XML mapping in its 'to_combine_fields' field. For more
+ information, see [mapping](#mapping).
+It should look as follows:
 ~~~JSON
 {
   "combined_json_fields": {
       "xml_field": {
-          "to_combine_fields": [
-              "xml_field_1",
-              "xml_field_2",
-              "xml_field_etcetera"
-          ],
+          "to_combine_fields":{
+                "xml_root": {
+                    "xml_subroot": {
+                    "xml_subroot_field_1": "published_message_field_1",
+                    "xml_subroot_field_2": "published_message_field_2",
+                    "xml_subroot_field_etcetera": "published_message_field_etcetera"
+                    },
+                    "xml_filename": "xml_filename"
+                }
+          },
           "combination_method": "HYPHEN or NEWLINE",
           "start_with_field": true
       }
@@ -238,10 +231,22 @@ Below is a full example of a mapping JSON.
         },
         "combined_xml_fields": {
             "Code": {
-                "to_combine_fields": [
-                    "TicketNumber",
-                    "StreetName"
-                ],
+                "to_combine_fields": {
+                    "Addresses": {
+                        "Address": {
+                            "TicketNumber": "ticket_number",
+                            "StreetName": "ADDRESS_SPLIT",
+                        },
+                        "xml_filename": "",
+                        "address_split": {
+                            "address": {
+                                "streetname": "StreetName",
+                                "number": "Number",
+                                "addition": "Addition"
+                            }
+                        }
+                    }
+                }
                 "combination_method": "HYPHEN"
             }
         }

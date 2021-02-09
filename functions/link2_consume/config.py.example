@@ -34,6 +34,7 @@ SOURCEPATH_FIELD = "published-message-field"
 #   - The combination method can be NEWLINE or HYPHEN
 #   - If the field "start_with_field" is true, the combination will be done by first adding the field name
 # The field "combined_xml_fields" contains XML fields which have as their value a combination of fields of the final XML file
+# via XML mapping
 #   - The combination method can be NEWLINE or HYPHEN
 #   - If the field "start_with_field" is true, the combination will be done by first adding the field name
 # The field "prefixes" contains fields from the message in the field 'message_field' and its prefix in the field 'prefix'
@@ -96,17 +97,22 @@ MAPPING = {
                 "start_with_field": True or False
             }
         },
-        "combined_xml_fields": {
+        "combined_json_fields": {
             "xml_field": {
-                "xml_fields": [
-                    "xml_field_1",
-                    "xml_field_2",
-                    "xml_field_etcetera"
-                ],
+                "to_combine_fields":{
+                    "xml_root": {
+                        "xml_subroot": {
+                            "xml_subroot_field_1": "published_message_field_1",
+                            "xml_subroot_field_2": "published_message_field_2",
+                            "xml_subroot_field_etcetera": "published_message_field_etcetera"
+                        },
+                        "xml_filename": "xml_filename"
+                    }
+                },
                 "combination_method": "HYPHEN or NEWLINE",
                 "start_with_field": True or False
             }
-        }
+        },
         "prefixes": {
             "xml_field_1": {
                 "message_field": "json_field_1",
