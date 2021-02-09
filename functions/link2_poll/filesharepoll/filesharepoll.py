@@ -1,4 +1,4 @@
-from config import AZURE_STORAGEACCOUNT, AZURE_SOURCESHARE, REQUIRED_NAME_STARTS, \
+from config import AZURE_STORAGEACCOUNT, AZURE_SOURCESHARE, \
                    REQUIRED_EXTENSION, GCP_STORAGE_BUCKET, AZURE_PATH, GCP_STORAGE_BUCKET_FOLDER
 import os
 import logging
@@ -20,7 +20,6 @@ class FileSharePoll(object):
         self.project_id = os.environ.get('PROJECT_ID', 'Required parameter is missing')
         self.storagekey_secret_id = os.environ.get('AZURE_STORAGEKEY_SECRET_ID', 'Required parameter is missing')
         self.required_extension = REQUIRED_EXTENSION
-        self.required_name_starts = REQUIRED_NAME_STARTS
         self.gcp_bucket_name = GCP_STORAGE_BUCKET
         self.gcp_folder = GCP_STORAGE_BUCKET_FOLDER
         self.azure_path = AZURE_PATH
