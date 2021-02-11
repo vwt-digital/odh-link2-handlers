@@ -29,15 +29,15 @@ def process(data, context):
 
 def json_to_topic(xml_json, context):
     gobits = Gobits.from_context(context=context)
+    msg = {
+            "gobits": [gobits.to_json()],
+            TOPIC_FIELD: xml_json
+        }
     # Publish to topic
     try:
         publisher = pubsub_v1.PublisherClient()
         topic_path = "projects/{}/topics/{}".format(
             TOPIC_PROJECT_ID, TOPIC_NAME)
-        msg = {
-            "gobits": [gobits.to_json()],
-            TOPIC_FIELD: xml_json
-        }
         # print(json.dumps(msg, indent=4, sort_keys=True))
         future = publisher.publish(
             topic_path, bytes(json.dumps(msg).encode('utf-8')))
