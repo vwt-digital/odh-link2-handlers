@@ -4,7 +4,6 @@ import xmltodict
 import json
 from config import REQUIRED_FIELDS, TOPIC_PROJECT_ID, TOPIC_NAME, TOPIC_FIELD
 from gobits import Gobits
-import sys
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,8 +22,7 @@ def process(data, context):
         # JSON to topic
         if xml_json:
             return_bool = json_to_topic(xml_json, context)
-            if not return_bool:
-                sys.exit(1)
+            return return_bool
         else:
             logging.info("No field in the XML was a required field")
 

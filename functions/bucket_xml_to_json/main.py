@@ -9,8 +9,14 @@ def status_to_json(data, context):
     try:
         bucket = data['bucket']
         logging.info(f'A file has been uploaded to bucket {bucket}')
+        logging.info(f'The file data: {data}')
+        logging.info(f'The file context: {data}')
 
-        statusprocessor.process(data, context)
+        processed = statusprocessor.process(data, context)
+        if processed is False:
+            logging.info("XML file was not processed")
+        else:
+            logging.info("XML file is processed")
 
     except Exception as e:
         logging.info('Extract of subscription failed')
