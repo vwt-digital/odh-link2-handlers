@@ -9,9 +9,6 @@ def status_to_json(data, context):
     try:
         bucket = data['bucket']
         logging.info(f'A file has been uploaded to bucket {bucket}')
-        logging.info(f'The file data: {data}')
-        logging.info(f'The file context: {context}')
-        logging.info(f'The type of context is: {type(context)}')
 
         processed = statusprocessor.process(data, context)
         if processed is False:
