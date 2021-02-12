@@ -55,7 +55,9 @@ def xml_to_json(xml):
     xml_json = xmltodict.parse(xml)
     # Make sure that only the fields that are needed are in the JSON
     new_xml_json = check_xml(xml_json)
-    return new_xml_json
+    # Make fields lowercase
+    xml_json_lowercase = make_lowercase(dict(new_xml_json))
+    return xml_json_lowercase
 
 
 # Recursive function that checks whether a field of the given JSON
@@ -68,3 +70,12 @@ def check_xml(xml_json):
         elif isinstance(value, dict):
             xml_json_copy[field] = check_xml(xml_json_copy[field])
     return xml_json_copy
+
+
+def make_lowercase(xml_json):
+    if isinstance(xml_json, list):
+        return [make_lowercase(v) for v in xml_json]
+    elif isinstance(xml_json, dict):
+        return dict((k.lower(), make_lowercase(v)) for k, v in xml_json.items())
+    else:
+        return xml_json
