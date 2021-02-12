@@ -32,7 +32,7 @@ def json_to_topic(xml_json, context):
     msg = {
             "gobits": [gobits.to_json()],
             TOPIC_FIELD: xml_json
-        }
+    }
     # Publish to topic
     try:
         publisher = pubsub_v1.PublisherClient()
