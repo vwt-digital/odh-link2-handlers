@@ -7,4 +7,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def link2_to_bucket(request):
-    poll_object.poll()
+    if poll_object.poll() is False:
+        logging.error("Object polling went wrong")
+    else:
+        logging.info("Polled all objects")

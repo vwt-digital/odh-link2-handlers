@@ -45,20 +45,7 @@ The mapping parameter is a dictionary which is set up as illustrated below:
       "xml_subroot_field_2": "published_message_field_2",
       "xml_subroot_field_etcetera": "published_message_field_etcetera"
     },
-    "xml_filename": "xml_filename",
-    "ticket_number_field": "published_message_ticket_number_field",
-    "address_split": {
-      "published_message_address_field": {
-          "streetname": "xml_address_field_streetname",
-          "number": "xml_address_field_number",
-          "addition": "xml_address_field_addition"
-      }
-    },
-    "hardcoded_fields": {
-      "xml_subroot_field_1": "hardcoded_value_1",
-      "xml_subroot_field_2": "hardcoded_value_2",
-      "xml_subroot_field_etcetera": "hardcoded_value_etcetera"
-    }
+    "xml_filename": "xml_filename"
   }
 }
 ~~~
@@ -106,6 +93,13 @@ It should look as follows:
       "firestore_ids": [
           {"firestore_field_1": "json_field_1"},
           {"firestore_field_2": "json_field_2"},
+          {"firestore_field_3": {
+                        "firestore_collection": "firestore_collection_name_1",
+                        "firestore_ids": [
+                            {"firestore_field_1": "json_field_1"}
+                        ],
+                        "firestore_value": "firestore_field_value"
+          }},
           {"firestore_field_etcetera": "json_field_etcetara"}
       ],
       "firestore_value": "firestore_field_value",
@@ -123,21 +117,25 @@ It should look as follows:
 ~~~
 Where:  
       ```xml_field``` is the field in the XML for which the value should be looked up.  
-      ```firestore_collection``` is the collection in the firestore where the value should be looked up in.
-      ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.
+      ```firestore_collection``` is the collection in the firestore where the value should be looked up in.  
+      ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.  
+       The IDs in the Firestore, this ID can be:  
+            - A string, then it will just be an ID in the current firestore_collection  
+            - A dictionary, then the value will be looked up in another Firestore firestore_collection.  
+            This dictionary should look the same as a normal "firestore_fields" dictionary list item  
       ```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
       ```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist.  
 
-```combined_fields``` This field contains XML fields that should be combined from fields from the published message defined in
-```json_fields```. If this is a list with only 1 value, the combination method will be used to combine all the words in the field.  
+```combined_json_fields``` This field contains XML fields that should be combined from fields from the published message defined in
+```to_combine_fields```. If this is a list with only 1 value, the combination method will be used to combine all the words in the field.  
 The ```combination_method``` can be ```HYPHEN``` or ```NEWLINE```.  
 If the field ```start_with_field``` is set to true, the combination will be done by first adding the field name.  
 It should look as follows:
 ~~~JSON
 {
-  "combined_fields": {
+  "combined_json_fields": {
       "xml_field": {
-          "json_fields": [
+          "to_combine_fields": [
               "json_field_1",
               "json_field_2",
               "json_field_etcetera"
@@ -148,6 +146,49 @@ It should look as follows:
   }
 }
 ~~~
+The field ```combined_xml_fields``` combines the final XML fields. It needs an XML mapping in its 'to_combine_fields' field. For more
+ information, see [mapping](#mapping).
+It should look as follows:
+~~~JSON
+{
+  "combined_json_fields": {
+      "xml_field": {
+          "to_combine_fields":{
+                "xml_root": {
+                    "xml_subroot": {
+                    "xml_subroot_field_1": "published_message_field_1",
+                    "xml_subroot_field_2": "published_message_field_2",
+                    "xml_subroot_field_etcetera": "published_message_field_etcetera"
+                    },
+                    "xml_filename": "xml_filename"
+                }
+          },
+          "combination_method": "HYPHEN or NEWLINE",
+          "start_with_field": true
+      }
+  }
+}
+~~~
+The field ```prefixes``` checks whether a value has a certain prefix.
+It should look as follows:
+~~~JSON
+{
+    "prefixes": {
+        "xml_field_1": {
+            "message_field": "json_field_1",
+            "prefix": "prefix value"
+        },
+        "xml_field_2": {
+            "message_field": "json_field_2",
+            "prefix": "prefix value"
+        },
+        "xml_field_etcetera": {
+            "message_field": "json_field_etcetera",
+            "prefix": "prefix value"
+        }
+    }
+}
+~~~
 
 ### Extra field values
 The following field values are recognized by the code:
@@ -155,15 +196,18 @@ The following field values are recognized by the code:
 ```HARDCODED``` If you fill in this value, the code will look the field up in the "hardcoded_fields" fields in the mapping.
 ```ADDRESS_SPLIT``` If you fill in this value, the code will split the address as defined in the field "address_split".
 ```FIRESTORE``` If you fill in this value, the code will look up the value as defined in the field "firestore_fields".
-```COMBINED``` This value shows the program that the value should be looked up in the field "combined_fields".
+```COMBINED_JSON``` This value shows the code that the value should be looked up in the field "combined_json_fields".
+```COMBINED_XML``` This value shows the code that the value should be looked up in the field "combined_xml_fields".
+```PREFIX``` If you fill in this value, the code will look up the prefix that should be used for this value in the "prefixes" field  
 
+If multiple field values should be used, they should be split by a hyphen ('-').
 ### Example of mapping
 Below is a full example of a mapping JSON.
 ~~~JSON
 {
   "Addresses": {
         "Address": {
-            "Code": "COMBINED",
+            "Code": "COMBINED_XML",
             "TicketNumber": "ticket_number",
             "StreetName": "ADDRESS_SPLIT",
             "Number": "ADDRESS_SPLIT",
@@ -185,11 +229,24 @@ Below is a full example of a mapping JSON.
         "hardcoded_fields": {
                 "Land": "NL"
         },
-        "combined_fields": {
+        "combined_xml_fields": {
             "Code": {
-                "json_fields": [
-                    "address"
-                ],
+                "to_combine_fields": {
+                    "Addresses": {
+                        "Address": {
+                            "TicketNumber": "ticket_number",
+                            "StreetName": "ADDRESS_SPLIT",
+                        },
+                        "xml_filename": "",
+                        "address_split": {
+                            "address": {
+                                "streetname": "StreetName",
+                                "number": "Number",
+                                "addition": "Addition"
+                            }
+                        }
+                    }
+                }
                 "combination_method": "HYPHEN"
             }
         }
@@ -199,10 +256,12 @@ Below is a full example of a mapping JSON.
           "TicketNumber": "ticket_number",
           "Name": "name",
           "Email": "email_address",
+          "Phonenumber": "PREFIX",
           "JobType": "FIRESTORE",
           "BusinessUnit": "FIRESTORE",
           "CustomerTicket": "TICKETNR",
-          "ContactInformation": "COMBINED",
+          "ContactInformation": "COMBINED_JSON",
+          "NextJob": "FIRESTORE"
       },
       "xml_filename": "Activity_TICKETNR_GUID",
       "ticket_number_field": "ticket_number",
@@ -226,26 +285,46 @@ Below is a full example of a mapping JSON.
                       "logbooks": {
                           "logbook": {
                               "TicketNumber": "ticket_number",
-                              "LogboekTekst": "HARDCODED"
+                              "LogboekTekst": "HARDCODED-name"
                             },
                             "xml_filename": "Logbook_TICKETNR_GUID",
                             "ticket_number_field": "ticket_number",
                             "hardcoded_fields": {
-                                "LogboekTekst": "Made logbook file."
+                                "LogboekTekst": "Made logbook file for contact:"
                             }
                       }
                   }
               }
+          },
+          "NextJob": {
+              "firestore_collection": "jobs_collection",
+              "firestore_ids": [
+                  {"incoming_name_field_firestore": "incoming_name_field"},
+                  {"incoming_job_type_firestore": {
+                        "firestore_collection": "job_types_collection",
+                        "firestore_ids": [
+                            {"incoming_job_type_firestore": "incoming_job_type"}
+                        ],
+                        "firestore_value": "outgoing_job_type"
+                  }},
+              ],
+              "firestore_value": "outgoing_next_job"
           }
       },
-      "combined_fields": {
+      "combined_json_fields": {
             "ContactInformation": {
-                "json_fields": [
+                "to_combine_fields": [
                     "name",
                     "email_address"
                 ],
                 "combination_method": "NEWLINE",
                 "start_with_field": false
+            }
+      },
+      "prefixes": {
+            "Phonenumber": {
+                "message_field": "phonenumber",
+                "prefix": "06"
             }
       }
   }
@@ -266,6 +345,7 @@ Below is a full example of a mapping JSON.
             'address': 'an address 1',
             'name': 'A. nonymous',
             'email_address': 'anonymous@a.nonymous',
+            'phonenumber': '0612345678',
             'incoming_job_type': 'job',
             'incoming_name_field': 'name'
         }

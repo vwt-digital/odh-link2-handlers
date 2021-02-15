@@ -9,7 +9,6 @@ This function polls from [Azure Fileshare](https://docs.microsoft.com/en-us/azur
     AZURE_STORAGEACCOUNT = The Azure storage account the XML file needs to be send to
     AZURE_SOURCESHARE = Name of the share storage where the file needs to be polled from
     AZURE_PATH = Name of the path where the file needs to be polled from
-    REQUIRED_NAME_START = The string which the file to be polled needs to start with
     REQUIRED_EXTENSION = The extension which the file to be polled needs to have
     GCP_STORAGE_BUCKET = The Google Cloud Platform Storage Bucket the polled file needs to be put in
     GCP_STORAGE_BUCKET_FOLDER = The folder on the GCP storage bucket where the file needs to be placed in

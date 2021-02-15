@@ -22,13 +22,23 @@ SOURCEPATH_FIELD = "published-message-field"
 # The field "address_split" contains fields which the address should be split out into
 # The field "hardcoded_fields" has XML fields which have as their value the hardcoded value they should have
 # The field "firestore_fields" has XML fields which have as their value the Firestore database in which they should be looked up,
-#   the IDs in the Firestore and the value needed
-#   It is possible that a value cannot be found in the Firestore, in that case the field "if_not_exists" can be defined
-#   This field can have the field "make_logbook", which will make a logbook file if the value cannot be found in the firestore
-#   The logbook field works the same as the other mapping fields
-# The field "combined_fields" contains XML fields which have as their value a combination of fields of the published message,
-#   the combination method can be NEWLINE or HYPHEN
-#   If the field "start_with_field" is true, the combination will be done by first adding the field name
+#   - The IDs in the Firestore, this ID can be:
+#     - A string, then it will just be an ID in the current firestore_collection
+#     - A dictionary, then the value will be looked up in another Firestore firestore_collection
+#       This dictionary should look the same as a normal "firestore_fields" dictionary list item
+#   - The value needed
+#   - It is possible that a value cannot be found in the Firestore, in that case the field "if_not_exists" can be defined
+#     This field can have the field "make_logbook", which will make a logbook file if the value cannot be found in the firestore
+#     The logbook field works the same as the other mapping fields
+# The field "combined_json_fields" contains XML fields which have as their value a combination of fields of the published message
+#   - The combination method can be NEWLINE or HYPHEN
+#   - If the field "start_with_field" is true, the combination will be done by first adding the field name
+# The field "combined_xml_fields" contains XML fields which have as their value a combination of fields of the final XML file
+# via XML mapping
+#   - The combination method can be NEWLINE or HYPHEN
+#   - If the field "start_with_field" is true, the combination will be done by first adding the field name
+# The field "prefixes" contains fields from the message in the field 'message_field' and its prefix in the field 'prefix'
+
 MAPPING = {
     "xml_root": {
         "xml_subroot": {
@@ -56,6 +66,13 @@ MAPPING = {
                 "firestore_ids": [
                     {"firestore_field_1": "json_field_1"},
                     {"firestore_field_2": "json_field_2"},
+                    {"firestore_field_3": {
+                        "firestore_collection": "firestore_collection_name_1",
+                        "firestore_ids": [
+                            {"firestore_field_1": "json_field_1"}
+                        ],
+                        "firestore_value": "firestore_field_value"
+                    }}
                     {"firestore_field_etcetera": "json_field_etcetara"}
                 ],
                 "firestore_value": "firestore_field_value",
@@ -69,7 +86,7 @@ MAPPING = {
                 }
             }
         },
-        "combined_fields": {
+        "combined_json_fields": {
             "xml_field": {
                 "json_fields": [
                     "json_field_1",
@@ -78,6 +95,36 @@ MAPPING = {
                 ],
                 "combination_method": "HYPHEN or NEWLINE",
                 "start_with_field": True or False
+            }
+        },
+        "combined_json_fields": {
+            "xml_field": {
+                "to_combine_fields":{
+                    "xml_root": {
+                        "xml_subroot": {
+                            "xml_subroot_field_1": "published_message_field_1",
+                            "xml_subroot_field_2": "published_message_field_2",
+                            "xml_subroot_field_etcetera": "published_message_field_etcetera"
+                        },
+                        "xml_filename": "xml_filename"
+                    }
+                },
+                "combination_method": "HYPHEN or NEWLINE",
+                "start_with_field": True or False
+            }
+        },
+        "prefixes": {
+            "xml_field_1": {
+                "message_field": "json_field_1",
+                "prefix": "prefix value"
+            },
+            "xml_field_2": {
+                "message_field": "json_field_2",
+                "prefix": "prefix value"
+            },
+            "xml_field_etcetera": {
+                "message_field": "json_field_etcetera",
+                "prefix": "prefix value"
             }
         }
     }

@@ -4,7 +4,6 @@ import xmltodict
 import json
 from config import REQUIRED_FIELDS, TOPIC_PROJECT_ID, TOPIC_NAME, TOPIC_FIELD
 from gobits import Gobits
-import sys
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,23 +22,22 @@ def process(data, context):
         # JSON to topic
         if xml_json:
             return_bool = json_to_topic(xml_json, context)
-            if not return_bool:
-                sys.exit(1)
+            return return_bool
         else:
             logging.info("No field in the XML was a required field")
 
 
 def json_to_topic(xml_json, context):
     gobits = Gobits.from_context(context=context)
+    msg = {
+            "gobits": [gobits.to_json()],
+            TOPIC_FIELD: xml_json
+    }
     # Publish to topic
     try:
         publisher = pubsub_v1.PublisherClient()
         topic_path = "projects/{}/topics/{}".format(
             TOPIC_PROJECT_ID, TOPIC_NAME)
-        msg = {
-            "gobits": [gobits.to_json()],
-            TOPIC_FIELD: xml_json
-        }
         # print(json.dumps(msg, indent=4, sort_keys=True))
         future = publisher.publish(
             topic_path, bytes(json.dumps(msg).encode('utf-8')))
@@ -57,7 +55,9 @@ def xml_to_json(xml):
     xml_json = xmltodict.parse(xml)
     # Make sure that only the fields that are needed are in the JSON
     new_xml_json = check_xml(xml_json)
-    return new_xml_json
+    # Make fields lowercase
+    xml_json_lowercase = make_lowercase(dict(new_xml_json))
+    return xml_json_lowercase
 
 
 # Recursive function that checks whether a field of the given JSON
@@ -70,3 +70,12 @@ def check_xml(xml_json):
         elif isinstance(value, dict):
             xml_json_copy[field] = check_xml(xml_json_copy[field])
     return xml_json_copy
+
+
+def make_lowercase(xml_json):
+    if isinstance(xml_json, list):
+        return [make_lowercase(v) for v in xml_json]
+    elif isinstance(xml_json, dict):
+        return dict((k.lower(), make_lowercase(v)) for k, v in xml_json.items())
+    else:
+        return xml_json
