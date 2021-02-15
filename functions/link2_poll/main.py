@@ -10,4 +10,4 @@ def link2_to_bucket(request):
     if poll_object.poll() is False:
         logging.error("Object polling went wrong")
     else:
-        logging.info("Polled all objects")
+        logging.info("Function has run succesfully")

@@ -1,6 +1,5 @@
-# Consume for Link2
-This function consumes messages posted on a Pub/Sub Topic, turns them into XML files and puts them on an Azure fileshare.
-
+# Bucket XML to JSON
+This function consumes messages gotten via a Google Cloud Platform (GCP) bucket trigger. It gets the file from the storage bucket and checks whether it is an XML file, makes it a JSON and sends it to a GCP topic.
 ## Setup
 1. Make sure a ```config.py``` file exists within the directory, based on the [config.example.py](config.example.py), with the correct configuration:
     ~~~

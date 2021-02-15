@@ -65,7 +65,7 @@ class FileSharePoll(object):
                     file_on_share.delete_file(lease=file_lease)
         else:
             logging.info("No storage account is set")
-            return False
+            return True
         return True
 
     def put_file_on_bucket(self, file_name, file_body):
