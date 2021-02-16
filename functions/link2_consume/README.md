@@ -189,6 +189,40 @@ It should look as follows:
     }
 }
 ~~~
+The field ```date_fields``` contains XML fields that should be in the date format ```{year}{month}{day}{hour}{minutes}{seconds}```.  
+It should look as follows:
+~~~JSON
+{
+    "date_fields": {
+            "xml_field_1": {
+                "json_field": "json_field_1",
+                "format": [
+                    "datetime-format_1",
+                    "datetime-format_2",
+                    "datetime-format_etcetera"
+                ]
+            },
+            "xml_field_2": {
+                "json_field": "json_field_2",
+                "format": [
+                    "datetime-format_1",
+                    "datetime-format_2",
+                    "datetime-format_etcetera"
+                ]
+            },
+            "xml_field_etcetera": {
+                "json_field": "json_field_etcetera",
+                "format": [
+                    "datetime-format_1",
+                    "datetime-format_2",
+                    "datetime-format_etcetera"
+                ]
+            }
+        }
+}
+~~~
+Where the value of ```json_field``` should be the field from the message which the XML field should have as a value but in the right format.  
+```format``` is a list of [datetime formats](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes) where the year, month, day, hour, minutes and seconds can be gotten from. For example ```%d-%m-%Y``` for the date string ```01-01-2021```.
 
 ### Extra field values
 The following field values are recognized by the code:
@@ -199,6 +233,7 @@ The following field values are recognized by the code:
 ```COMBINED_JSON``` This value shows the code that the value should be looked up in the field "combined_json_fields".
 ```COMBINED_XML``` This value shows the code that the value should be looked up in the field "combined_xml_fields".
 ```PREFIX``` If you fill in this value, the code will look up the prefix that should be used for this value in the "prefixes" field  
+```DATE``` If you fill in this value, the code will turn the value of the field into the format ```{year}{month}{day}{hour}{minutes}{seconds}```.  
 
 If multiple field values should be used, they should be split by a hyphen ('-').
 ### Example of mapping
@@ -214,7 +249,7 @@ Below is a full example of a mapping JSON.
             "Addition": "ADDRESS_SPLIT",
             "PostalCode": "postalcode",
             "Land": "HARDCODED",
-            "UitvLand": "HARDCODED",
+            "Date": "DATE",
             "CustomerTicket": "TICKETNR"
         },
         "xml_filename": "Address_TICKETNR_GUID",
@@ -224,6 +259,15 @@ Below is a full example of a mapping JSON.
                 "streetname": "StreetName",
                 "number": "Number",
                 "addition": "Addition"
+            }
+        },
+        "date_fields": {
+            "Date": {
+                "json_field": "date",
+                "format": [
+                    "%d-%m-%Y",
+                    "%d-%m-%y"
+                ]
             }
         },
         "hardcoded_fields": {
@@ -246,7 +290,7 @@ Below is a full example of a mapping JSON.
                             }
                         }
                     }
-                }
+                },
                 "combination_method": "HYPHEN"
             }
         }
@@ -347,7 +391,8 @@ Below is a full example of a mapping JSON.
             'email_address': 'anonymous@a.nonymous',
             'phonenumber': '0612345678',
             'incoming_job_type': 'job',
-            'incoming_name_field': 'name'
+            'incoming_name_field': 'name',
+            'date': '01-01-2021'
         }
 }
 ~~~

@@ -38,6 +38,7 @@ SOURCEPATH_FIELD = "published-message-field"
 #   - The combination method can be NEWLINE or HYPHEN
 #   - If the field "start_with_field" is true, the combination will be done by first adding the field name
 # The field "prefixes" contains fields from the message in the field 'message_field' and its prefix in the field 'prefix'
+# The field "date_fields" contains fields from the message that should be in a specific date format
 
 MAPPING = {
     "xml_root": {
@@ -125,6 +126,32 @@ MAPPING = {
             "xml_field_etcetera": {
                 "message_field": "json_field_etcetera",
                 "prefix": "prefix value"
+            }
+        },
+        "date_fields": {
+            "xml_field_1": {
+                "json_field": "json_field_1",
+                "format": [
+                    "datetime-format_1",
+                    "datetime-format_2",
+                    "datetime-format_etcetera"
+                ]
+            },
+            "xml_field_2": {
+                "json_field": "json_field_2",
+                "format": [
+                    "datetime-format_1",
+                    "datetime-format_2",
+                    "datetime-format_etcetera"
+                ]
+            },
+            "xml_field_etcetera": {
+                "json_field": "json_field_etcetera",
+                "format": [
+                    "datetime-format_1",
+                    "datetime-format_2",
+                    "datetime-format_etcetera"
+                ]
             }
         }
     }

@@ -65,6 +65,7 @@ class Link2Processor(object):
             combined_json_fields = mapping_json[xml_root].get('combined_json_fields')
             combined_xml_fields = mapping_json[xml_root].get('combined_xml_fields')
             prefixes_field = mapping_json[xml_root].get('prefixes')
+            date_fields = mapping_json[xml_root].get('date_fields')
             # Get the sub element
             for xml_root_sub in mapping_json[xml_root]:
                 # If the sub element is not 'xml_filename', 'address_split'
@@ -78,7 +79,8 @@ class Link2Processor(object):
                    xml_root_sub != "firestore_fields" and \
                    xml_root_sub != "combined_json_fields" and \
                    xml_root_sub != "combined_xml_fields" and \
-                   xml_root_sub != "prefixes":
+                   xml_root_sub != "prefixes" and \
+                   xml_root_sub != "date_fields":
                     json_subelement = {}
                     for field in mapping_json[xml_root][xml_root_sub]:
                         field_json = mapping_json[xml_root][xml_root_sub][field]
@@ -142,6 +144,13 @@ class Link2Processor(object):
                             # If value in part of field_json is "PREFIX"
                             elif fj_part == "PREFIX":
                                 success, new_value = self.other_values_processor.prefix_value(field, prefixes_field, input_json)
+                                if success:
+                                    field_value = field_value + new_value
+                                else:
+                                    return False
+                            # If value in part of field_json is "DATE"
+                            elif fj_part == "DATE":
+                                success, new_value = self.other_values_processor.date_value(field, date_fields, input_json)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
