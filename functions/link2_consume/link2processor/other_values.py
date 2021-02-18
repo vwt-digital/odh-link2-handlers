@@ -80,11 +80,35 @@ class OtherValuesProcessor(object):
         if field_value == "None" or not field_value:
             logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
             return False, field_value
-        # Check if the value starts with the specified prefix
-        prefix = xml_dict['prefix']
-        if not field_value.startswith(prefix):
-            logging.error(f"The field {message_field} in the message does not start with the defined prefix in 'phonenumber_field'")
-            return False, field_value
+        # Check if the value starts with the specified prefixes
+        prefixes = xml_dict['prefixes']
+        has_prefix = False
+        for prefix in prefixes:
+            if field_value.startswith(prefix):
+                has_prefix = True
+        # If the message field does not have the right prefix
+        if has_prefix is False:
+            logging.info(f"The field {message_field} in the message does not start with any of"
+                         f" the defined prefixes in 'phonenumber_field', checking if there is an alternative field")
+            # Check if the alternative message field does have the right prefix
+            alt_message_field = xml_dict.get('alternative_message_field')
+            if not alt_message_field:
+                logging.info("No alternative message field found in 'prefixes' field in config")
+                return True, ""
+            field_value = input_json.get(alt_message_field)
+            if field_value == "None" or not field_value:
+                logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
+                return False, field_value
+            # Check if the value starts with the specified prefixes
+            prefixes = xml_dict['prefixes']
+            for prefix in prefixes:
+                if field_value.startswith(prefix):
+                    has_prefix = True
+            # If the alternative message field does not have the right prefix
+            if has_prefix is False:
+                logging.info(f"The alternative field {alt_message_field} in the message does not start with any of"
+                             f" the defined prefixes in 'phonenumber_field', keeping {field} empty")
+                return True, ""
         return True, field_value
 
     def date_value(self, field, date_fields, input_json):

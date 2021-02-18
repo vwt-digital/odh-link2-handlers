@@ -146,6 +146,7 @@ It should look as follows:
   }
 }
 ~~~
+
 The field ```combined_xml_fields``` combines the final XML fields. It needs an XML mapping in its 'to_combine_fields' field. For more
  information, see [mapping](#mapping).
 It should look as follows:
@@ -169,6 +170,7 @@ It should look as follows:
   }
 }
 ~~~
+
 The field ```prefixes``` checks whether a value has a certain prefix.
 It should look as follows:
 ~~~JSON
@@ -176,19 +178,35 @@ It should look as follows:
     "prefixes": {
         "xml_field_1": {
             "message_field": "json_field_1",
-            "prefix": "prefix value"
+            "alternative_message_field": "json_field_2",
+            "prefixes": [
+                "prefix_value_1",
+                "prefix_value_2",
+                "prefix_value_etcetera"
+            ]
         },
         "xml_field_2": {
             "message_field": "json_field_2",
-            "prefix": "prefix value"
+            "alternative_message_field": "",
+            "prefixes": [
+                "prefix_value_1",
+                "prefix_value_2",
+                "prefix_value_etcetera"
+            ]
         },
         "xml_field_etcetera": {
             "message_field": "json_field_etcetera",
-            "prefix": "prefix value"
+            "prefixes": [
+                "prefix_value_1",
+                "prefix_value_2",
+                "prefix_value_etcetera"
+            ]
         }
     }
 }
 ~~~
+If the JSON message field defined in ```message_field``` does start with the prefix, it is checked whether the field ```alternative_message_field``` is defined and if it is, whether the JSON message field defined in the ```alternative_message_field``` does start with the right prefix. 
+
 The field ```date_fields``` contains XML fields that should be in the date format ```{year}{month}{day}{hour}{minutes}{seconds}```.  
 It should look as follows:
 ~~~JSON
@@ -368,7 +386,11 @@ Below is a full example of a mapping JSON.
       "prefixes": {
             "Phonenumber": {
                 "message_field": "phonenumber",
-                "prefix": "06"
+                "prefixes": [
+                    "06",
+                    "00316",
+                    "+316"
+                ]
             }
       }
   }
