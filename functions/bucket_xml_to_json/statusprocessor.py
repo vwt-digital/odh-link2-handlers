@@ -2,7 +2,7 @@ import logging
 from google.cloud import storage, pubsub_v1
 import xmltodict
 import json
-from config import REQUIRED_FIELDS, TOPIC_PROJECT_ID, TOPIC_NAME, TOPIC_FIELD
+from config import REQUIRED_FIELDS, TOPIC_PROJECT_ID, TOPIC_NAME, TOPIC_FIELD, TOPIC_MESSAGE_MAPPING
 from gobits import Gobits
 
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +33,7 @@ def json_to_topic(xml_json, context):
             "gobits": [gobits.to_json()],
             TOPIC_FIELD: xml_json
     }
-    # Publish to topic
+    # # Publish to topic
     try:
         publisher = pubsub_v1.PublisherClient()
         topic_path = "projects/{}/topics/{}".format(
@@ -55,9 +55,9 @@ def xml_to_json(xml):
     xml_json = xmltodict.parse(xml)
     # Make sure that only the fields that are needed are in the JSON
     new_xml_json = check_xml(xml_json)
-    # Make fields lowercase
-    xml_json_lowercase = make_lowercase(dict(new_xml_json))
-    return xml_json_lowercase
+    # Map fields to json message fields
+    xml_json_mapped = map_fields(new_xml_json)
+    return xml_json_mapped
 
 
 # Recursive function that checks whether a field of the given JSON
@@ -72,10 +72,16 @@ def check_xml(xml_json):
     return xml_json_copy
 
 
-def make_lowercase(xml_json):
-    if isinstance(xml_json, list):
-        return [make_lowercase(v) for v in xml_json]
-    elif isinstance(xml_json, dict):
-        return dict((k.lower(), make_lowercase(v)) for k, v in xml_json.items())
-    else:
-        return xml_json
+def map_fields(xml_json):
+    xml_json_mapped = {}
+    for field in xml_json:
+        mapped_field = TOPIC_MESSAGE_MAPPING.get(field)
+        if not mapped_field:
+            logging.error(f"Could not find {field} in topic message mapping.")
+        value = xml_json[field]
+        # If value is dictionary
+        if isinstance(value, dict):
+            # Call function again with value
+            value = map_fields(value)
+        xml_json_mapped.update({mapped_field: value})
+    return xml_json_mapped
