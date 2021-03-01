@@ -7,6 +7,7 @@ This function consumes messages gotten via a Google Cloud Platform (GCP) bucket 
     TOPIC_PROJECT_ID = The GCP project ID where the topic resends where the JSON made from the XML file needs to be send to
     TOPIC_NAME = The topic name of the topic where the JSON made from the XML file needs to be send to
     TOPIC_FIELD = The message that is send to the topic contains two fields, one field has the gobits of the message. The other, which name should be defined here, contains the JSON made from the XML.
+    TOPIC_MESSAGE_MAPPING = A dictionary that maps the XML fields to JSON message fields
     ~~~
 2. Deploy the function with help of the [cloudbuild.example.yaml](cloudbuild.example.yaml) to the Google Cloud Platform.
 

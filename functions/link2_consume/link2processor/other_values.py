@@ -1,5 +1,6 @@
 import re
 import logging
+import datetime
 
 logging.basicConfig(level=logging.INFO)
 
@@ -79,11 +80,71 @@ class OtherValuesProcessor(object):
         if field_value == "None" or not field_value:
             logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
             return False, field_value
-        # Check if the value starts with the specified prefix
-        prefix = xml_dict['prefix']
-        if not field_value.startswith(prefix):
-            logging.error(f"The field {message_field} in the message does not start with the defined prefix in 'phonenumber_field'")
+        # Check if the value starts with the specified prefixes
+        prefixes = xml_dict['prefixes']
+        has_prefix = False
+        for prefix in prefixes:
+            if field_value.startswith(prefix):
+                has_prefix = True
+        # If the message field does not have the right prefix
+        if has_prefix is False:
+            logging.info(f"The field {message_field} in the message does not start with any of"
+                         f" the defined prefixes in 'phonenumber_field', checking if there is an alternative field")
+            # Check if the alternative message field does have the right prefix
+            alt_message_field = xml_dict.get('alternative_message_field')
+            if not alt_message_field:
+                logging.info("No alternative message field found in 'prefixes' field in config")
+                return True, ""
+            field_value = input_json.get(alt_message_field)
+            if field_value == "None" or not field_value:
+                logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
+                return False, field_value
+            # Check if the value starts with the specified prefixes
+            prefixes = xml_dict['prefixes']
+            for prefix in prefixes:
+                if field_value.startswith(prefix):
+                    has_prefix = True
+            # If the alternative message field does not have the right prefix
+            if has_prefix is False:
+                logging.info(f"The alternative field {alt_message_field} in the message does not start with any of"
+                             f" the defined prefixes in 'phonenumber_field', keeping {field} empty")
+                return True, ""
+        return True, field_value
+
+    def date_value(self, field, date_fields, input_json):
+        field_value = ""
+        # Get JSON field
+        right_dict = date_fields.get(field)
+        if not right_dict:
+            logging.error(f"Field {field} cannot be found in 'date_fields' field")
             return False, field_value
+        json_field = right_dict['json_field']
+        # Get field from message
+        success, original_value = self.message_value(input_json, json_field)
+        if success is False:
+            logging.error(f"Field {json_field} defined in 'date_fields' could not be found in the message")
+            return False, field_value
+        # Get format
+        date_format = right_dict['format']
+        # Turn the JSON field into the right date format
+        for df in date_format:
+            # Check if this is the right format
+            try:
+                field_value = datetime.datetime.strptime(original_value, df)
+                break
+            except ValueError:
+                # If the right format could not be found, the field should just stay empty
+                field_value = ""
+        # If it resulted in a datetime object
+        if isinstance(field_value, datetime.datetime):
+            # Make it into the right string
+            year = field_value.year
+            month = field_value.month
+            day = field_value.day
+            hour = str(field_value.hour).zfill(2)
+            minute = str(field_value.minute).zfill(2)
+            seconds = str(field_value.second).zfill(2)
+            field_value = f"{year}{month}{day}{hour}{minute}{seconds}"
         return True, field_value
 
     def message_value(self, input_json, field_json):

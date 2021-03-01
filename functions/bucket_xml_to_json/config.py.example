@@ -14,3 +14,10 @@ TOPIC_NAME = "topic-name"
 
 # The field in the message received by the topic which contains the JSON
 TOPIC_FIELD = "field"
+
+# Topic message mapping
+TOPIC_MESSAGE_MAPPING = {
+    "xml_field_1": "json_message_field_1",
+    "xml_field_2": "json_message_field_2",
+    "xml_field_etcetera": "json_message_field_etcetera"
+}
