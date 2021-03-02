@@ -1,6 +1,5 @@
-from config import MESSAGE_PROPERTIES, AZURE_STORAGEACCOUNT, \
-                   AZURE_DESTSHARE, SOURCEPATH_FIELD, MAPPING, \
-                   AZURE_DESTSHARE_FOLDERS
+from config import MESSAGE_PROPERTIES, MAPPING_FIELD, \
+                   STANDARD_MAPPING, MAPPING
 import os
 import logging
 import xmltodict
@@ -24,20 +23,19 @@ class Link2Processor(object):
     def __init__(self):
         self.data_selector = os.environ.get('DATA_SELECTOR', 'Required parameter is missing')
         self.meta = MESSAGE_PROPERTIES[self.data_selector]
-        self.destshare = AZURE_DESTSHARE
-        self.folder_prefix = AZURE_DESTSHARE_FOLDERS
-        self.storageaccount = AZURE_STORAGEACCOUNT
+        self.destshare = ""
+        self.folder_prefix = ""
+        self.storageaccount = ""
+        self.share = None
         self.project_id = os.environ.get('PROJECT_ID', 'Required parameter is missing')
         self.storagekey_secret_id = os.environ.get('AZURE_STORAGEKEY_SECRET_ID', 'Required parameter is missing')
         self.storagekey = None
-        if self.storageaccount:
-            client = secretmanager.SecretManagerServiceClient()
-            secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
-            key_response = client.access_secret_version(request={"name": secret_name})
-            self.storagekey = key_response.payload.data.decode("UTF-8")
-            self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
-                                     share_name=self.destshare, credential=self.storagekey)
-        self.sourcepath_field = SOURCEPATH_FIELD
+        client = secretmanager.SecretManagerServiceClient()
+        secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
+        key_response = client.access_secret_version(request={"name": secret_name})
+        self.storagekey = key_response.payload.data.decode("UTF-8")
+        self.mapping_field = MAPPING_FIELD
+        self.standard_mapping = STANDARD_MAPPING
         self.mapping = MAPPING
         self.other_values_processor = OtherValuesProcessor(self)
         self.firestore_values_processor = FirestoreValuesProcessor(self)
@@ -167,7 +165,12 @@ class Link2Processor(object):
                         else:
                             json_subelement.update(row)
                     if only_values_bool is False:
-                        xml_json = {xml_root: {xml_root_sub: json_subelement}}
+                        # If there is a xml root defined
+                        if xml_root:
+                            xml_json = {xml_root: {xml_root_sub: json_subelement}}
+                        # If there is not
+                        else:
+                            xml_json = {xml_root_sub: json_subelement}
             if only_values_bool is False:
                 # Append the filled out json and its filename
                 xml_and_fn = []
@@ -258,10 +261,36 @@ class Link2Processor(object):
 
         if isinstance(selector_data, list):
             for data in selector_data:
-                if not self.msg_to_fileshare(self.mapping, data):
+                # First get right mapping
+                # Check if mapping field can be found in message
+                map_kind = data.get(self.mapping_field)
+                # Use standard mapping unless mapping field is found
+                mapping_config = self.mapping[self.standard_mapping]
+                if map_kind:
+                    mapping_config = self.mapping[map_kind]
+                # Set Azure settings right
+                self.destshare = mapping_config['azure_destshare']
+                self.folder_prefix = mapping_config['azure_destshare_folders']
+                self.storageaccount = mapping_config['azure_storage_account']
+                self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
+                                         share_name=self.destshare, credential=self.storagekey)
+                if not self.msg_to_fileshare(mapping_config['mapping'], data):
                     logging.error("Message is not processed")
         elif isinstance(selector_data, dict):
-            if not self.msg_to_fileshare(self.mapping, selector_data):
+            # First get right mapping
+            # Check if mapping field can be found in message
+            map_kind = selector_data.get(self.mapping_field)
+            # Use standard mapping unless mapping field is found
+            mapping_config = self.mapping[self.standard_mapping]
+            if map_kind:
+                mapping_config = self.mapping[map_kind]
+            # Set Azure settings right
+            self.destshare = mapping_config['azure_destshare']
+            self.folder_prefix = mapping_config['azure_destshare_folders']
+            self.storageaccount = mapping_config['azure_storage_account']
+            self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
+                                     share_name=self.destshare, credential=self.storagekey)
+            if not self.msg_to_fileshare(mapping_config['mapping'], selector_data):
                 logging.error("Message is not processed")
         else:
             logging.error("Message is not a list or a dictionary")
