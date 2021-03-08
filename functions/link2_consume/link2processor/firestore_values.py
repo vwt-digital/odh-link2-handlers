@@ -58,20 +58,22 @@ class FirestoreValuesProcessor(object):
                               f" did not result in a value for XML field '{field}'"
                               f" in collection {collection_name}")
                 return False, "", []
-            # Check if in this field, the field "make_logbook" is defined
-            logbook_mapping = fs_dict["if_not_exists"].get("make_logbook")
-            if not logbook_mapping:
-                logging.error(f"The Firestore querie '{xml_fs_value}'"
-                              f" did not result in a value for XML field '{field}'"
-                              f" in collection {collection_name}")
-                return False, "", []
-            # If logbook has to be made
-            logging.info(f"The Firestore querie '{xml_fs_value}'"
-                         f" did not result in a value for XML field '{field}'"
-                         f" in collection {collection_name}, "
-                         "making logbook.")
-            # Make logbooks
-            mapped_logbooks = self.link2_processor.map_json(logbook_mapping, input_json, False)
-            # Add logbook to logbooks
-            logbooks.extend(mapped_logbooks)
+            # Check if the value of this field is not "DO_NOTHING"
+            if fs_dict["if_not_exists"] != "DO_NOTHING":
+                # Check if in this field, the field "make_logbook" is defined
+                logbook_mapping = fs_dict["if_not_exists"].get("make_logbook")
+                if not logbook_mapping:
+                    logging.error(f"The Firestore querie '{xml_fs_value}'"
+                                  f" did not result in a value for XML field '{field}'"
+                                  f" in collection {collection_name}")
+                    return False, "", []
+                # If logbook has to be made
+                logging.info(f"The Firestore querie '{xml_fs_value}'"
+                             f" did not result in a value for XML field '{field}'"
+                             f" in collection {collection_name}, "
+                             "making logbook.")
+                # Make logbooks
+                mapped_logbooks = self.link2_processor.map_json(logbook_mapping, input_json, False)
+                # Add logbook to logbooks
+                logbooks.extend(mapped_logbooks)
         return True, field_value, logbooks

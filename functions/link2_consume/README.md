@@ -142,7 +142,7 @@ Where:
             - A dictionary, then the value will be looked up in another Firestore firestore_collection.  
             This dictionary should look the same as a normal "firestore_fields" dictionary list item  
       ```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
-      ```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist.  
+      ```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist, if you do not want to create a logbook file, give the string ```DO_NOTHING``` as value.  
 
 ```combined_json_fields``` This field contains XML fields that should be combined from fields from the published message defined in
 ```to_combine_fields```. If this is a list with only 1 value, the combination method will be used to combine all the words in the field.  
