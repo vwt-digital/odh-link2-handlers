@@ -41,7 +41,7 @@ class Link2Processor(object):
         self.firestore_values_processor = FirestoreValuesProcessor(self)
         self.combined_values_processor = CombinedValuesProcessor(self)
 
-    def map_json(self, mapping_json, input_json, only_values_bool):
+    def map_json(self, mapping_json, input_json, only_values_bool, added_jsons):
         output_list = []
         logbooks = []
         # For every XML root
@@ -111,7 +111,8 @@ class Link2Processor(object):
                             # If value in part of field_json is "FIRESTORE"
                             elif fj_part == "FIRESTORE":
                                 success, new_value, new_logbooks = self.firestore_values_processor.firestore_value(field, firestore_fields,
-                                                                                                                   input_json, logbooks)
+                                                                                                                   input_json, logbooks,
+                                                                                                                   added_jsons)
                                 if success:
                                     logbooks = new_logbooks
                                     field_value = field_value + new_value
@@ -126,8 +127,8 @@ class Link2Processor(object):
                                     return False
                             # If value in part of field_json in "COMBINED_XML"
                             elif fj_part == "COMBINED_XML":
-                                success, new_value = self.combined_values_processor.combined_value_xml(field,
-                                                                                                       combined_xml_fields, input_json)
+                                success, new_value = self.combined_values_processor.combined_value_xml(field, combined_xml_fields,
+                                                                                                       input_json, added_jsons)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
@@ -172,12 +173,15 @@ class Link2Processor(object):
                         else:
                             xml_json = {xml_root_sub: json_subelement}
             if only_values_bool is False:
-                # Append the filled out json and its filename
-                xml_and_fn = []
-                xml_and_fn.append(xml_json)
-                filename_xml = self.make_filename(mapping_json[xml_root], input_json)
-                xml_and_fn.append(filename_xml)
-                output_list.append(xml_and_fn)
+                # Add JSON if it not already in list
+                if xml_json not in added_jsons:
+                    added_jsons.append(xml_json)
+                    # Append the filled out json and its filename
+                    xml_and_fn = []
+                    xml_and_fn.append(xml_json)
+                    filename_xml = self.make_filename(mapping_json[xml_root], input_json)
+                    xml_and_fn.append(filename_xml)
+                    output_list.append(xml_and_fn)
         if only_values_bool is False:
             output_list.extend(logbooks)
         return output_list
@@ -241,7 +245,8 @@ class Link2Processor(object):
         # Check if storage account is set
         if self.storageaccount:
             # Map the message to XMLs
-            mapped_jsons = self.map_json(mapping_json, msg, False)
+            added_jsons = []
+            mapped_jsons = self.map_json(mapping_json, msg, False, added_jsons)
             if not mapped_jsons:
                 return False
             # For every kind of XML file

@@ -9,7 +9,7 @@ class FirestoreValuesProcessor(object):
         self.gcp_firestore = FirestoreProcessor()
         self.link2_processor = link2_processor
 
-    def firestore_value(self, field, firestore_fields, input_json, logbooks):
+    def firestore_value(self, field, firestore_fields, input_json, logbooks, added_jsons):
         field_value = ""
         # The value can be looked up in the firestore
         # Get the dictionary belonging to the value
@@ -38,7 +38,7 @@ class FirestoreValuesProcessor(object):
                 elif isinstance(json_field, dict):
                     # If it is a dictionary
                     # The value has to be looked up in another Firestore collection
-                    success, json_value, new_logbooks = self.firestore_value(field, json_field, input_json, logbooks)
+                    success, json_value, new_logbooks = self.firestore_value(field, json_field, input_json, logbooks, added_jsons)
                     if success is False:
                         logging.error(f"The field {field} contains a field that has to be looked up in a Firestore collection"
                                       " but there was an error.")
@@ -71,9 +71,9 @@ class FirestoreValuesProcessor(object):
                 logging.info(f"The Firestore querie '{xml_fs_value}'"
                              f" did not result in a value for XML field '{field}'"
                              f" in collection {collection_name}, "
-                             "making logbook.")
+                             "making logbook if it was not made already.")
                 # Make logbooks
-                mapped_logbooks = self.link2_processor.map_json(logbook_mapping, input_json, False)
+                mapped_logbooks = self.link2_processor.map_json(logbook_mapping, input_json, False, added_jsons)
                 # Add logbook to logbooks
                 logbooks.extend(mapped_logbooks)
         return True, field_value, logbooks

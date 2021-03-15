@@ -67,7 +67,7 @@ class CombinedValuesProcessor(object):
             return False, field_value
         return True, field_value
 
-    def combined_value_xml(self, field, combined_fields, input_json):
+    def combined_value_xml(self, field, combined_fields, input_json, added_jsons):
         # Get field from 'combined_xml_fields'
         to_combine_info = combined_fields.get(field)
         if not to_combine_info:
@@ -76,7 +76,7 @@ class CombinedValuesProcessor(object):
         # Get 'to_combine_fields' info
         to_com_fields = to_combine_info['to_combine_fields']
         # Get field values
-        field_values = self.link2_processor.map_json(to_com_fields, input_json, True)
+        field_values = self.link2_processor.map_json(to_com_fields, input_json, True, added_jsons)
         # Combine values
         combination_method = to_combine_info['combination_method']
         combined_value = ""
