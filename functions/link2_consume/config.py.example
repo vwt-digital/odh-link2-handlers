@@ -21,8 +21,10 @@ MESSAGE_PROPERTIES = {
 #       This dictionary should look the same as a normal "firestore_fields" dictionary list item
 #   - The value needed
 #   - It is possible that a value cannot be found in the Firestore, in that case the field "if_not_exists" can be defined
-#     This field can have the field "make_logbook", which will make a logbook file if the value cannot be found in the firestore
+#     This will have a dictionary which can contain the fields:
+#   - "make_logbook", which will make a logbook file if the value cannot be found in the firestore
 #     The logbook field works the same as the other mapping fields
+#   - "value", which has as value the hardcoded value that should be filled in if the Firestore value cannot be found
 # The field "combined_json_fields" contains XML fields which have as their value a combination of fields of the published message
 #   - The combination method can be NEWLINE or HYPHEN
 #   - If the field "start_with_field" is true, the combination will be done by first adding the field name
@@ -81,7 +83,8 @@ MAPPING = {
                                     "xml_subroot": {
                                     }
                                 }
-                            }
+                            },
+                            "value": "hardcoded_field_value"
                         }
                     }
                 },

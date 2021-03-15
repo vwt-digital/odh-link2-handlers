@@ -76,4 +76,8 @@ class FirestoreValuesProcessor(object):
                 mapped_logbooks = self.link2_processor.map_json(logbook_mapping, input_json, False, added_jsons)
                 # Add logbook to logbooks
                 logbooks.extend(mapped_logbooks)
+                # If config contains "value", fill in that hardcoded value
+                value_else = fs_dict["if_not_exists"].get("value")
+                if value_else:
+                    field_value = value_else
         return True, field_value, logbooks

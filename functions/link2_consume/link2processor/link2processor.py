@@ -160,6 +160,9 @@ class Link2Processor(object):
                                     field_value = field_value + new_value
                                 else:
                                     return False
+                        # Check if the value contains "LEAVE_EMPTY" because then the whole value should stay empty
+                        if "LEAVE_EMPTY" in field_value:
+                            field_value = ""
                         row = {field: field_value}
                         if only_values_bool is True:
                             output_list.append(row)

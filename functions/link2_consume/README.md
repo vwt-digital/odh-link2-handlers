@@ -127,22 +127,26 @@ It should look as follows:
                   "xml_subroot": {
                   }
               }
-          }
+          },
+          "value": "hardcoded_field_value"
       }
     }
   }
 }
 ~~~
 Where:  
-      ```xml_field``` is the field in the XML for which the value should be looked up.  
-      ```firestore_collection``` is the collection in the firestore where the value should be looked up in.  
-      ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.  
-       The IDs in the Firestore, this ID can be:  
-            - A string, then it will just be an ID in the current firestore_collection  
-            - A dictionary, then the value will be looked up in another Firestore firestore_collection.  
-            This dictionary should look the same as a normal "firestore_fields" dictionary list item  
-      ```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
-      ```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist, if you do not want to create a logbook file, give the string ```DO_NOTHING``` as value.  
+```xml_field``` is the field in the XML for which the value should be looked up.  
+```firestore_collection``` is the collection in the firestore where the value should be looked up in.  
+```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.  
+The IDs in the Firestore, this ID can be:  
+    - A string, then it will just be an ID in the current firestore_collection  
+    - A dictionary, then the value will be looked up in another Firestore firestore_collection.
+    This dictionary should look the same as a normal "firestore_fields" dictionary list item  
+```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
+```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist, if you do not want to create a logbook file, give the string ```DO_NOTHING``` as value.  
+This field has a dictionary as value which can contain the following fields:
+    - ```make_logbook``` which will make a logbook file if the value cannot be found in the firestore. The logbook field works the same as the other mapping fields.
+    - ```value``` which has as value the hardcoded value that should be filled in if the Firestore value cannot be found
 
 ```combined_json_fields``` This field contains XML fields that should be combined from fields from the published message defined in
 ```to_combine_fields```. If this is a list with only 1 value, the combination method will be used to combine all the words in the field.  
@@ -272,6 +276,9 @@ The following field values are recognized by the code:
 ```DATE``` If you fill in this value, the code will turn the value of the field into the format ```{year}{month}{day}{hour}{minutes}{seconds}```.  
 
 If multiple field values should be used, they should be split by a hyphen ('-').
+
+### Leave a field empty
+If the code has run and a value of the XML contains ```LEAVE_EMTPY``` then it automatically leaves that field empty.
 ### Example of mapping
 Below is a full example of a mapping JSON.
 ~~~JSON
@@ -378,7 +385,8 @@ Below is a full example of a mapping JSON.
                                             "LogboekTekst": "Made logbook file for contact:"
                                         }
                                 }
-                            }
+                            },
+                            "value": "Unknown"
                         }
                     },
                     "NextJob": {
