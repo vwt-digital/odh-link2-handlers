@@ -4,17 +4,10 @@ MESSAGE_PROPERTIES = {
     }
 }
 
-# Name of the Azure storage account
-AZURE_STORAGEACCOUNT = "azure-storage-account"
-# Name of the share storage where the file needs to go to
-AZURE_DESTSHARE = "azure-destshare"
-# Prefix of the file containing the folders the file needs to be placed in
-AZURE_DESTSHARE_FOLDERS = "folder1/folder2/"
-# Field in the published message from which the Azure sourcefilepath can be created
-SOURCEPATH_FIELD = "published-message-field"
-
+# The mapping can be looked up via the right mapping_field_value
+# The Azure settings should be set per mapping
 # The mapping from the field of the published message to the XML file fields for Link2
-# The first field is the XML root
+# The first field is the XML root, it can be an empty string
 # The first of the second fields is the XML root subelement
 # And the values in the second field are the mapping
 # The field "xml_filename" is the field with which the XML file should start
@@ -28,8 +21,10 @@ SOURCEPATH_FIELD = "published-message-field"
 #       This dictionary should look the same as a normal "firestore_fields" dictionary list item
 #   - The value needed
 #   - It is possible that a value cannot be found in the Firestore, in that case the field "if_not_exists" can be defined
-#     This field can have the field "make_logbook", which will make a logbook file if the value cannot be found in the firestore
+#     This will have a dictionary which can contain the fields:
+#   - "make_logbook", which will make a logbook file if the value cannot be found in the firestore
 #     The logbook field works the same as the other mapping fields
+#   - "value", which has as value the hardcoded value that should be filled in if the Firestore value cannot be found
 # The field "combined_json_fields" contains XML fields which have as their value a combination of fields of the published message
 #   - The combination method can be NEWLINE or HYPHEN
 #   - If the field "start_with_field" is true, the combination will be done by first adding the field name
@@ -41,129 +36,137 @@ SOURCEPATH_FIELD = "published-message-field"
 # The field "date_fields" contains fields from the message that should be in a specific date format
 
 MAPPING = {
-    "xml_root": {
-        "xml_subroot": {
-            "xml_subroot_field_1": "published_message_field_1",
-            "xml_subroot_field_2": "published_message_field_2",
-            "xml_subroot_field_etcetera": "published_message_field_etcetera"
-        },
-        "xml_filename": "xml_filename",
-        "ticket_number_field": "published_message_ticket_number_field",
-        "address_split": {
-        "published_message_address_field": {
-            "streetname": "xml_address_field_streetname",
-            "number": "xml_address_field_number",
-            "addition": "xml_address_field_addition"
-        }
-        },
-        "hardcoded_fields": {
-            "xml_subroot_field_1": "hardcoded_value_1",
-            "xml_subroot_field_2": "hardcoded_value_2",
-            "xml_subroot_field_etcetera": "hardcoded_value_etcetera"
-        },
-        "firestore_fields": {
-            "xml_field": {
-                "firestore_collection": "firestore_collection_name",
-                "firestore_ids": [
-                    {"firestore_field_1": "json_field_1"},
-                    {"firestore_field_2": "json_field_2"},
-                    {"firestore_field_3": {
-                        "firestore_collection": "firestore_collection_name_1",
+    "mapping_field_value": {
+        "azure_storage_account": "azure-storage-account",
+        "azure_destshare": "azure-destination-share",
+        "azure_destshare_folders": "folder_1/folder_2/folder_etcetera",
+        "mapping": {
+            "xml_root": {
+                "xml_subroot": {
+                    "xml_subroot_field_1": "published_message_field_1",
+                    "xml_subroot_field_2": "published_message_field_2",
+                    "xml_subroot_field_etcetera": "published_message_field_etcetera"
+                },
+                "xml_filename": "xml_filename",
+                "ticket_number_field": "published_message_ticket_number_field",
+                "address_split": {
+                "published_message_address_field": {
+                    "streetname": "xml_address_field_streetname",
+                    "number": "xml_address_field_number",
+                    "addition": "xml_address_field_addition"
+                }
+                },
+                "hardcoded_fields": {
+                    "xml_subroot_field_1": "hardcoded_value_1",
+                    "xml_subroot_field_2": "hardcoded_value_2",
+                    "xml_subroot_field_etcetera": "hardcoded_value_etcetera"
+                },
+                "firestore_fields": {
+                    "xml_field": {
+                        "firestore_collection": "firestore_collection_name",
                         "firestore_ids": [
-                            {"firestore_field_1": "json_field_1"}
+                            {"firestore_field_1": "json_field_1"},
+                            {"firestore_field_2": "json_field_2"},
+                            {"firestore_field_3": {
+                                "firestore_collection": "firestore_collection_name_1",
+                                "firestore_ids": [
+                                    {"firestore_field_1": "json_field_1"}
+                                ],
+                                "firestore_value": "firestore_field_value"
+                            }}
+                            {"firestore_field_etcetera": "json_field_etcetara"}
                         ],
-                        "firestore_value": "firestore_field_value"
-                    }}
-                    {"firestore_field_etcetera": "json_field_etcetara"}
-                ],
-                "firestore_value": "firestore_field_value",
-                "if_not_exists": {
-                    "make_logbook": {
-                        "xml_root": {
-                            "xml_subroot": {
-                            }
+                        "firestore_value": "firestore_field_value",
+                        "if_not_exists": {
+                            "make_logbook": {
+                                "xml_root": {
+                                    "xml_subroot": {
+                                    }
+                                }
+                            },
+                            "value": "hardcoded_field_value"
                         }
                     }
-                }
-            }
-        },
-        "combined_json_fields": {
-            "xml_field": {
-                "json_fields": [
-                    "json_field_1",
-                    "json_field_2",
-                    "json_field_etcetera"
-                ],
-                "combination_method": "HYPHEN or NEWLINE",
-                "start_with_field": True or False
-            }
-        },
-        "combined_json_fields": {
-            "xml_field": {
-                "to_combine_fields":{
-                    "xml_root": {
-                        "xml_subroot": {
-                            "xml_subroot_field_1": "published_message_field_1",
-                            "xml_subroot_field_2": "published_message_field_2",
-                            "xml_subroot_field_etcetera": "published_message_field_etcetera"
-                        },
-                        "xml_filename": "xml_filename"
+                },
+                "combined_json_fields": {
+                    "xml_field": {
+                        "json_fields": [
+                            "json_field_1",
+                            "json_field_2",
+                            "json_field_etcetera"
+                        ],
+                        "combination_method": "HYPHEN or NEWLINE",
+                        "start_with_field": True or False
                     }
                 },
-                "combination_method": "HYPHEN or NEWLINE",
-                "start_with_field": True or False
-            }
-        },
-        "prefixes": {
-            "xml_field_1": {
-                "message_field": "json_field_1",
-                "prefixes": [
-                    "prefix_value_1",
-                    "prefix_value_2",
-                    "prefix_value_etcetera"
-                ]
-            },
-            "xml_field_2": {
-                "message_field": "json_field_2",
-                "prefixes": [
-                    "prefix_value_1",
-                    "prefix_value_2",
-                    "prefix_value_etcetera"
-                ]
-            },
-            "xml_field_etcetera": {
-                "message_field": "json_field_etcetera",
-                "prefixes": [
-                    "prefix_value_1",
-                    "prefix_value_2",
-                    "prefix_value_etcetera"
-                ]
-            }
-        },
-        "date_fields": {
-            "xml_field_1": {
-                "json_field": "json_field_1",
-                "format": [
-                    "datetime-format_1",
-                    "datetime-format_2",
-                    "datetime-format_etcetera"
-                ]
-            },
-            "xml_field_2": {
-                "json_field": "json_field_2",
-                "format": [
-                    "datetime-format_1",
-                    "datetime-format_2",
-                    "datetime-format_etcetera"
-                ]
-            },
-            "xml_field_etcetera": {
-                "json_field": "json_field_etcetera",
-                "format": [
-                    "datetime-format_1",
-                    "datetime-format_2",
-                    "datetime-format_etcetera"
-                ]
+                "combined_json_fields": {
+                    "xml_field": {
+                        "to_combine_fields":{
+                            "xml_root": {
+                                "xml_subroot": {
+                                    "xml_subroot_field_1": "published_message_field_1",
+                                    "xml_subroot_field_2": "published_message_field_2",
+                                    "xml_subroot_field_etcetera": "published_message_field_etcetera"
+                                },
+                                "xml_filename": "xml_filename"
+                            }
+                        },
+                        "combination_method": "HYPHEN or NEWLINE",
+                        "start_with_field": True or False
+                    }
+                },
+                "prefixes": {
+                    "xml_field_1": {
+                        "message_field": "json_field_1",
+                        "prefixes": [
+                            "prefix_value_1",
+                            "prefix_value_2",
+                            "prefix_value_etcetera"
+                        ]
+                    },
+                    "xml_field_2": {
+                        "message_field": "json_field_2",
+                        "prefixes": [
+                            "prefix_value_1",
+                            "prefix_value_2",
+                            "prefix_value_etcetera"
+                        ]
+                    },
+                    "xml_field_etcetera": {
+                        "message_field": "json_field_etcetera",
+                        "prefixes": [
+                            "prefix_value_1",
+                            "prefix_value_2",
+                            "prefix_value_etcetera"
+                        ]
+                    }
+                },
+                "date_fields": {
+                    "xml_field_1": {
+                        "json_field": "json_field_1",
+                        "format": [
+                            "datetime-format_1",
+                            "datetime-format_2",
+                            "datetime-format_etcetera"
+                        ]
+                    },
+                    "xml_field_2": {
+                        "json_field": "json_field_2",
+                        "format": [
+                            "datetime-format_1",
+                            "datetime-format_2",
+                            "datetime-format_etcetera"
+                        ]
+                    },
+                    "xml_field_etcetera": {
+                        "json_field": "json_field_etcetera",
+                        "format": [
+                            "datetime-format_1",
+                            "datetime-format_2",
+                            "datetime-format_etcetera"
+                        ]
+                    }
+                }
             }
         }
     }

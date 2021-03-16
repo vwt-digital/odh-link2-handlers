@@ -1,6 +1,5 @@
-from config import MESSAGE_PROPERTIES, AZURE_STORAGEACCOUNT, \
-                   AZURE_DESTSHARE, SOURCEPATH_FIELD, MAPPING, \
-                   AZURE_DESTSHARE_FOLDERS
+from config import MESSAGE_PROPERTIES, MAPPING_FIELD, \
+                   STANDARD_MAPPING, MAPPING
 import os
 import logging
 import xmltodict
@@ -24,26 +23,25 @@ class Link2Processor(object):
     def __init__(self):
         self.data_selector = os.environ.get('DATA_SELECTOR', 'Required parameter is missing')
         self.meta = MESSAGE_PROPERTIES[self.data_selector]
-        self.destshare = AZURE_DESTSHARE
-        self.folder_prefix = AZURE_DESTSHARE_FOLDERS
-        self.storageaccount = AZURE_STORAGEACCOUNT
+        self.destshare = ""
+        self.folder_prefix = ""
+        self.storageaccount = ""
+        self.share = None
         self.project_id = os.environ.get('PROJECT_ID', 'Required parameter is missing')
         self.storagekey_secret_id = os.environ.get('AZURE_STORAGEKEY_SECRET_ID', 'Required parameter is missing')
         self.storagekey = None
-        if self.storageaccount:
-            client = secretmanager.SecretManagerServiceClient()
-            secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
-            key_response = client.access_secret_version(request={"name": secret_name})
-            self.storagekey = key_response.payload.data.decode("UTF-8")
-            self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
-                                     share_name=self.destshare, credential=self.storagekey)
-        self.sourcepath_field = SOURCEPATH_FIELD
+        client = secretmanager.SecretManagerServiceClient()
+        secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
+        key_response = client.access_secret_version(request={"name": secret_name})
+        self.storagekey = key_response.payload.data.decode("UTF-8")
+        self.mapping_field = MAPPING_FIELD
+        self.standard_mapping = STANDARD_MAPPING
         self.mapping = MAPPING
         self.other_values_processor = OtherValuesProcessor(self)
         self.firestore_values_processor = FirestoreValuesProcessor(self)
         self.combined_values_processor = CombinedValuesProcessor(self)
 
-    def map_json(self, mapping_json, input_json, only_values_bool):
+    def map_json(self, mapping_json, input_json, only_values_bool, added_jsons):
         output_list = []
         logbooks = []
         # For every XML root
@@ -113,7 +111,8 @@ class Link2Processor(object):
                             # If value in part of field_json is "FIRESTORE"
                             elif fj_part == "FIRESTORE":
                                 success, new_value, new_logbooks = self.firestore_values_processor.firestore_value(field, firestore_fields,
-                                                                                                                   input_json, logbooks)
+                                                                                                                   input_json, logbooks,
+                                                                                                                   added_jsons)
                                 if success:
                                     logbooks = new_logbooks
                                     field_value = field_value + new_value
@@ -128,8 +127,8 @@ class Link2Processor(object):
                                     return False
                             # If value in part of field_json in "COMBINED_XML"
                             elif fj_part == "COMBINED_XML":
-                                success, new_value = self.combined_values_processor.combined_value_xml(field,
-                                                                                                       combined_xml_fields, input_json)
+                                success, new_value = self.combined_values_processor.combined_value_xml(field, combined_xml_fields,
+                                                                                                       input_json, added_jsons)
                                 if success:
                                     field_value = field_value + new_value
                                 else:
@@ -161,20 +160,31 @@ class Link2Processor(object):
                                     field_value = field_value + new_value
                                 else:
                                     return False
+                        # Check if the value contains "LEAVE_EMPTY" because then the whole value should stay empty
+                        if "LEAVE_EMPTY" in field_value:
+                            field_value = ""
                         row = {field: field_value}
                         if only_values_bool is True:
                             output_list.append(row)
                         else:
                             json_subelement.update(row)
                     if only_values_bool is False:
-                        xml_json = {xml_root: {xml_root_sub: json_subelement}}
+                        # If there is a xml root defined
+                        if xml_root:
+                            xml_json = {xml_root: {xml_root_sub: json_subelement}}
+                        # If there is not
+                        else:
+                            xml_json = {xml_root_sub: json_subelement}
             if only_values_bool is False:
-                # Append the filled out json and its filename
-                xml_and_fn = []
-                xml_and_fn.append(xml_json)
-                filename_xml = self.make_filename(mapping_json[xml_root], input_json)
-                xml_and_fn.append(filename_xml)
-                output_list.append(xml_and_fn)
+                # Add JSON if it not already in list
+                if xml_json not in added_jsons:
+                    added_jsons.append(xml_json)
+                    # Append the filled out json and its filename
+                    xml_and_fn = []
+                    xml_and_fn.append(xml_json)
+                    filename_xml = self.make_filename(mapping_json[xml_root], input_json)
+                    xml_and_fn.append(filename_xml)
+                    output_list.append(xml_and_fn)
         if only_values_bool is False:
             output_list.extend(logbooks)
         return output_list
@@ -238,7 +248,8 @@ class Link2Processor(object):
         # Check if storage account is set
         if self.storageaccount:
             # Map the message to XMLs
-            mapped_jsons = self.map_json(mapping_json, msg, False)
+            added_jsons = []
+            mapped_jsons = self.map_json(mapping_json, msg, False, added_jsons)
             if not mapped_jsons:
                 return False
             # For every kind of XML file
@@ -258,10 +269,36 @@ class Link2Processor(object):
 
         if isinstance(selector_data, list):
             for data in selector_data:
-                if not self.msg_to_fileshare(self.mapping, data):
+                # First get right mapping
+                # Check if mapping field can be found in message
+                map_kind = data.get(self.mapping_field)
+                # Use standard mapping unless mapping field is found
+                mapping_config = self.mapping[self.standard_mapping]
+                if map_kind:
+                    mapping_config = self.mapping[map_kind]
+                # Set Azure settings right
+                self.destshare = mapping_config['azure_destshare']
+                self.folder_prefix = mapping_config['azure_destshare_folders']
+                self.storageaccount = mapping_config['azure_storage_account']
+                self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
+                                         share_name=self.destshare, credential=self.storagekey)
+                if not self.msg_to_fileshare(mapping_config['mapping'], data):
                     logging.error("Message is not processed")
         elif isinstance(selector_data, dict):
-            if not self.msg_to_fileshare(self.mapping, selector_data):
+            # First get right mapping
+            # Check if mapping field can be found in message
+            map_kind = selector_data.get(self.mapping_field)
+            # Use standard mapping unless mapping field is found
+            mapping_config = self.mapping[self.standard_mapping]
+            if map_kind:
+                mapping_config = self.mapping[map_kind]
+            # Set Azure settings right
+            self.destshare = mapping_config['azure_destshare']
+            self.folder_prefix = mapping_config['azure_destshare_folders']
+            self.storageaccount = mapping_config['azure_storage_account']
+            self.share = ShareClient(account_url=f"https://{self.storageaccount}.file.core.windows.net/",
+                                     share_name=self.destshare, credential=self.storagekey)
+            if not self.msg_to_fileshare(mapping_config['mapping'], selector_data):
                 logging.error("Message is not processed")
         else:
             logging.error("Message is not a list or a dictionary")

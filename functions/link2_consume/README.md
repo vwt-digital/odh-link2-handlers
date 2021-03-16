@@ -4,12 +4,9 @@ This function consumes messages posted on a Pub/Sub Topic, turns them into XML f
 ## Setup
 1. Make sure a ```config.py``` file exists within the directory, based on the [config.example.py](config.example.py), with the correct configuration:
     ~~~
-    AZURE_STORAGEACCOUNT = The Azure storage account the XML file needs to be send to
-    AZURE_DESTSHARE = Name of the share storage where the file needs to go to
-    AZURE_DESTSHARE_FOLDERS = Prefix of the file containing the folders the file needs to be placed in
-    SOURCEPATH_FIELD = Field in the published message from which the Azure sourcefilepath can be created
-    XML_ROOT = The root field of the XML file
-    XML_ROOT_SUBELEMENT = The first subelement of the root
+    MESSAGE_PROPERTIES = Dictionary containing the field in the message where the data can be gathered from, this data is henceforth called "message"
+    MAPPING_FIELD = A field in the incoming message which value gives the right mapping
+    STANDARD_MAPPING = If the mapping field cannot be found in the message, this value is used to get the right mapping
     MAPPING = The mapping from the field of the published message to the XML file fields for Link2
     ~~~
 2. Make sure the following variables are present in the environment:
@@ -25,7 +22,7 @@ To make sure the function works according to the way it was intented, the incomi
 ~~~JSON
 {
   "gobits": [ ],
-  "notifications": [
+  "message_field": [
     {
       "published_message_field_1": "published_message_value_1",
       "published_message_field_2": "published_message_value_2",
@@ -35,20 +32,41 @@ To make sure the function works according to the way it was intented, the incomi
 }
 ~~~
 
+## Message properties
+The message properties dictionary can look as follows:
+~~~JSON
+{
+    "message_field": {
+        "entity_name": "message_field"
+    }
+}
+~~~
+Where ```entity_name``` is hardcoded and ```message_field``` is the field in the message where the data can be gathered from.
+
 ## Mapping
 The mapping parameter is a dictionary which is set up as illustrated below:
 ~~~JSON
 {
-  "xml_root": {
-    "xml_subroot": {
-      "xml_subroot_field_1": "published_message_field_1",
-      "xml_subroot_field_2": "published_message_field_2",
-      "xml_subroot_field_etcetera": "published_message_field_etcetera"
-    },
-    "xml_filename": "xml_filename"
-  }
+    "mapping_field_value": {
+        "azure_storage_account": "azure-storage-account",
+        "azure_destshare": "azure-destination-share",
+        "azure_destshare_folders": "folder_1/folder_2/folder_etcetera",
+        "mapping": {
+            "xml_root": {
+                "xml_subroot": {
+                "xml_subroot_field_1": "published_message_field_1",
+                "xml_subroot_field_2": "published_message_field_2",
+                "xml_subroot_field_etcetera": "published_message_field_etcetera"
+                },
+                "xml_filename": "xml_filename"
+            }
+        }
+    }
 }
 ~~~
+Where ```mapping_field_value``` should at least be the value defined in the parameter ```STANDARD_MAPPING```.  
+The ```xml_root``` can also be an empty string, in that case the ```xml_subroot``` value is used as XML root.
+
 ### Required fields
 The first field below the XML root field should always be the XML subroot field.
 
@@ -109,22 +127,26 @@ It should look as follows:
                   "xml_subroot": {
                   }
               }
-          }
+          },
+          "value": "hardcoded_field_value"
       }
     }
   }
 }
 ~~~
 Where:  
-      ```xml_field``` is the field in the XML for which the value should be looked up.  
-      ```firestore_collection``` is the collection in the firestore where the value should be looked up in.  
-      ```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.  
-       The IDs in the Firestore, this ID can be:  
-            - A string, then it will just be an ID in the current firestore_collection  
-            - A dictionary, then the value will be looked up in another Firestore firestore_collection.  
-            This dictionary should look the same as a normal "firestore_fields" dictionary list item  
-      ```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
-      ```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist.  
+```xml_field``` is the field in the XML for which the value should be looked up.  
+```firestore_collection``` is the collection in the firestore where the value should be looked up in.  
+```firestore_ids``` are the fields in the collection which should fit the JSON value in order to give an XML value.  
+The IDs in the Firestore, this ID can be:  
+    - A string, then it will just be an ID in the current firestore_collection  
+    - A dictionary, then the value will be looked up in another Firestore firestore_collection.
+    This dictionary should look the same as a normal "firestore_fields" dictionary list item  
+```firestore_value``` is the field in the collection that should be given as XML value if the right IDs are given.  
+```if_not_exists``` is an optional field which gives a configuration option to add a logbook file if a value does not exist, if you do not want to create a logbook file, give the string ```DO_NOTHING``` as value.  
+This field has a dictionary as value which can contain the following fields:
+    - ```make_logbook``` which will make a logbook file if the value cannot be found in the firestore. The logbook field works the same as the other mapping fields.
+    - ```value``` which has as value the hardcoded value that should be filled in if the Firestore value cannot be found
 
 ```combined_json_fields``` This field contains XML fields that should be combined from fields from the published message defined in
 ```to_combine_fields```. If this is a list with only 1 value, the combination method will be used to combine all the words in the field.  
@@ -254,148 +276,160 @@ The following field values are recognized by the code:
 ```DATE``` If you fill in this value, the code will turn the value of the field into the format ```{year}{month}{day}{hour}{minutes}{seconds}```.  
 
 If multiple field values should be used, they should be split by a hyphen ('-').
+
+### Leave a field empty
+If the code has run and a value of the XML contains ```LEAVE_EMTPY``` then it automatically leaves that field empty.
 ### Example of mapping
 Below is a full example of a mapping JSON.
 ~~~JSON
 {
-  "Addresses": {
-        "Address": {
-            "Code": "COMBINED_XML",
-            "TicketNumber": "ticket_number",
-            "StreetName": "ADDRESS_SPLIT",
-            "Number": "ADDRESS_SPLIT",
-            "Addition": "ADDRESS_SPLIT",
-            "PostalCode": "postalcode",
-            "Land": "HARDCODED",
-            "Date": "DATE",
-            "CustomerTicket": "TICKETNR"
-        },
-        "xml_filename": "Address_TICKETNR_GUID",
-        "ticket_number_field": "ticket_number",
-        "address_split": {
-            "address": {
-                "streetname": "StreetName",
-                "number": "Number",
-                "addition": "Addition"
-            }
-        },
-        "date_fields": {
-            "Date": {
-                "json_field": "date",
-                "format": [
-                    "%d-%m-%Y",
-                    "%d-%m-%y"
-                ]
-            }
-        },
-        "hardcoded_fields": {
-                "Land": "NL"
-        },
-        "combined_xml_fields": {
-            "Code": {
-                "to_combine_fields": {
-                    "Addresses": {
-                        "Address": {
-                            "TicketNumber": "ticket_number",
-                            "StreetName": "ADDRESS_SPLIT",
-                        },
-                        "xml_filename": "",
-                        "address_split": {
-                            "address": {
-                                "streetname": "StreetName",
-                                "number": "Number",
-                                "addition": "Addition"
-                            }
+    "CREATE": {
+        "azure_storage_account": "azure-storage-acccount",
+        "azure_destshare": "azure-destination-share",
+        "azure_destshare_folders": "folder1/folder2/",
+        "mapping": {
+            "Addresses": {
+                    "Address": {
+                        "Code": "COMBINED_XML",
+                        "TicketNumber": "ticket_number",
+                        "StreetName": "ADDRESS_SPLIT",
+                        "Number": "ADDRESS_SPLIT",
+                        "Addition": "ADDRESS_SPLIT",
+                        "PostalCode": "postalcode",
+                        "Land": "HARDCODED",
+                        "Date": "DATE",
+                        "CustomerTicket": "TICKETNR"
+                    },
+                    "xml_filename": "Address_TICKETNR_GUID",
+                    "ticket_number_field": "ticket_number",
+                    "address_split": {
+                        "address": {
+                            "streetname": "StreetName",
+                            "number": "Number",
+                            "addition": "Addition"
+                        }
+                    },
+                    "date_fields": {
+                        "Date": {
+                            "json_field": "date",
+                            "format": [
+                                "%d-%m-%Y",
+                                "%d-%m-%y"
+                            ]
+                        }
+                    },
+                    "hardcoded_fields": {
+                            "Land": "NL"
+                    },
+                    "combined_xml_fields": {
+                        "Code": {
+                            "to_combine_fields": {
+                                "Addresses": {
+                                    "Address": {
+                                        "TicketNumber": "ticket_number",
+                                        "StreetName": "ADDRESS_SPLIT",
+                                    },
+                                    "xml_filename": "",
+                                    "address_split": {
+                                        "address": {
+                                            "streetname": "StreetName",
+                                            "number": "Number",
+                                            "addition": "Addition"
+                                        }
+                                    }
+                                }
+                            },
+                            "combination_method": "HYPHEN"
                         }
                     }
+            },
+            "Contacts": {
+                "Contact": {
+                    "TicketNumber": "ticket_number",
+                    "Name": "name",
+                    "Email": "email_address",
+                    "Phonenumber": "PREFIX",
+                    "JobType": "FIRESTORE",
+                    "BusinessUnit": "FIRESTORE",
+                    "CustomerTicket": "TICKETNR",
+                    "ContactInformation": "COMBINED_JSON",
+                    "NextJob": "FIRESTORE"
                 },
-                "combination_method": "HYPHEN"
-            }
-        }
-  },
-  "Contacts": {
-      "Contact": {
-          "TicketNumber": "ticket_number",
-          "Name": "name",
-          "Email": "email_address",
-          "Phonenumber": "PREFIX",
-          "JobType": "FIRESTORE",
-          "BusinessUnit": "FIRESTORE",
-          "CustomerTicket": "TICKETNR",
-          "ContactInformation": "COMBINED_JSON",
-          "NextJob": "FIRESTORE"
-      },
-      "xml_filename": "Activity_TICKETNR_GUID",
-      "ticket_number_field": "ticket_number",
-      "firestore_fields": {
-          "JobType": {
-              "firestore_collection": "job_types_collection",
-              "firestore_ids": [
-                  {"incoming_job_type_firestore": "incoming_job_type"}
-              ],
-              "firestore_value": "outgoing_job_type"
-          },
-          "BusinessUnit": {
-              "firestore_collection": "business_units_collection",
-              "firestore_ids": [
-                  {"incoming_job_type_firestore": "incoming_job_type"},
-                  {"incoming_name_field_firestore": "incoming_name_field"}
-              ],
-              "firestore_value": "outgoing_business_unit",
-              "if_not_exists": {
-                  "make_logbook": {
-                      "logbooks": {
-                          "logbook": {
-                              "TicketNumber": "ticket_number",
-                              "LogboekTekst": "HARDCODED-name"
-                            },
-                            "xml_filename": "Logbook_TICKETNR_GUID",
-                            "ticket_number_field": "ticket_number",
-                            "hardcoded_fields": {
-                                "LogboekTekst": "Made logbook file for contact:"
-                            }
-                      }
-                  }
-              }
-          },
-          "NextJob": {
-              "firestore_collection": "jobs_collection",
-              "firestore_ids": [
-                  {"incoming_name_field_firestore": "incoming_name_field"},
-                  {"incoming_job_type_firestore": {
+                "xml_filename": "Activity_TICKETNR_GUID",
+                "ticket_number_field": "ticket_number",
+                "firestore_fields": {
+                    "JobType": {
                         "firestore_collection": "job_types_collection",
                         "firestore_ids": [
                             {"incoming_job_type_firestore": "incoming_job_type"}
                         ],
                         "firestore_value": "outgoing_job_type"
-                  }},
-              ],
-              "firestore_value": "outgoing_next_job"
-          }
-      },
-      "combined_json_fields": {
-            "ContactInformation": {
-                "to_combine_fields": [
-                    "name",
-                    "email_address"
-                ],
-                "combination_method": "NEWLINE",
-                "start_with_field": false
+                    },
+                    "BusinessUnit": {
+                        "firestore_collection": "business_units_collection",
+                        "firestore_ids": [
+                            {"incoming_job_type_firestore": "incoming_job_type"},
+                            {"incoming_name_field_firestore": "incoming_name_field"}
+                        ],
+                        "firestore_value": "outgoing_business_unit",
+                        "if_not_exists": {
+                            "make_logbook": {
+                                "logbooks": {
+                                    "logbook": {
+                                        "TicketNumber": "ticket_number",
+                                        "LogboekTekst": "HARDCODED-name"
+                                        },
+                                        "xml_filename": "Logbook_TICKETNR_GUID",
+                                        "ticket_number_field": "ticket_number",
+                                        "hardcoded_fields": {
+                                            "LogboekTekst": "Made logbook file for contact:"
+                                        }
+                                }
+                            },
+                            "value": "Unknown"
+                        }
+                    },
+                    "NextJob": {
+                        "firestore_collection": "jobs_collection",
+                        "firestore_ids": [
+                            {"incoming_name_field_firestore": "incoming_name_field"},
+                            {"incoming_job_type_firestore": {
+                                    "firestore_collection": "job_types_collection",
+                                    "firestore_ids": [
+                                        {"incoming_job_type_firestore": "incoming_job_type"}
+                                    ],
+                                    "firestore_value": "outgoing_job_type"
+                            }},
+                        ],
+                        "firestore_value": "outgoing_next_job"
+                    }
+                },
+                "combined_json_fields": {
+                        "ContactInformation": {
+                            "to_combine_fields": [
+                                "name",
+                                "email_address"
+                            ],
+                            "combination_method": "NEWLINE",
+                            "start_with_field": false
+                        }
+                },
+                "prefixes": {
+                        "Phonenumber": {
+                            "message_field": "phonenumber",
+                            "prefixes": [
+                                "06",
+                                "00316",
+                                "+316"
+                            ]
+                        }
+                }
             }
-      },
-      "prefixes": {
-            "Phonenumber": {
-                "message_field": "phonenumber",
-                "prefixes": [
-                    "06",
-                    "00316",
-                    "+316"
-                ]
-            }
-      }
-  }
+        }
+    }
 }
 ~~~
+Here the parameter ```STANDARD_MAPPING``` will be set to "CREATE".
 
 ### Example of incoming message
 ~~~
@@ -405,7 +439,7 @@ Below is a full example of a mapping JSON.
             'processed': '2021-01-01T00:00:00.000Z'
             }
         ],
-        'parsed_email': {
+        'email': {
             'ticket_number': '123456',
             'postalcode': '1234HP',
             'address': 'an address 1',
@@ -414,8 +448,18 @@ Below is a full example of a mapping JSON.
             'phonenumber': '0612345678',
             'incoming_job_type': 'job',
             'incoming_name_field': 'name',
-            'date': '01-01-2021'
+            'date': '01-01-2021',
+            'mapping_field': 'CREATE'
         }
+}
+~~~
+In the configuration, the parameter ```MAPPING_FIELD``` can be set to ```mapping_field```.  
+The field ```MESSAGE_PROPERTIES``` will be defined as follows:
+~~~JSON
+{
+    "email": {
+        "entity_name": "email"
+    }
 }
 ~~~
 
