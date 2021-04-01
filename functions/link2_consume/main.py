@@ -1,7 +1,18 @@
-import logging
-import json
 import base64
+import json
+import logging
+
+from config import DEBUG_LOGGING
+
 from link2processor import Link2Processor
+
+
+def log(debug_message, normal_message):
+    if DEBUG_LOGGING:
+        logging.info(debug_message)
+    else:
+        logging.info(normal_message)
+
 
 parser = Link2Processor()
 
@@ -11,21 +22,24 @@ logging.basicConfig(level=logging.INFO)
 # First json to postgis, then postgis to database
 def json_to_link2(request):
     # Extract data from request
-    envelope = json.loads(request.data.decode('utf-8'))
-    payload = base64.b64decode(envelope['message']['data'])
+    envelope = json.loads(request.data.decode("utf-8"))
+    payload = base64.b64decode(envelope["message"]["data"])
 
     # Extract subscription from subscription string
     try:
-        subscription = envelope['subscription'].split('/')[-1]
-        logging.info(f'Message received from {subscription} [{payload}]')
+        subscription = envelope["subscription"].split("/")[-1]
+        log(
+            f"Message received from {subscription} [{payload}]",
+            f"Message received from {subscription}",
+        )
 
         parser.process(json.loads(payload))
 
     except Exception as e:
-        logging.info('Extract of subscription failed')
+        logging.info("Extract of subscription failed")
         logging.debug(e)
         raise e
 
     # Returning any 2xx status indicates successful receipt of the message.
     # 204: no content, delivery successfull, no further actions needed
-    return 'OK', 204
+    return "OK", 204
