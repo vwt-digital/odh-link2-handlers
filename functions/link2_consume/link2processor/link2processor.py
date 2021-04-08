@@ -334,7 +334,9 @@ class Link2Processor(object):
 
     def split_streetname_nr(self, address):
         # Get street, number and addition from address
-        address_reg = re.split(r"(\d+)", address)
+        address_reg = re.split(r"(\d+|\D+)", address)
+        address_reg = list(filter(None, address_reg))
+        address_reg = [addr for addr in address_reg if addr.strip()]
         addition = ""
         if len(address_reg) <= 1:
             logging.error("Address misses street or number")
@@ -348,7 +350,8 @@ class Link2Processor(object):
         else:
             logging.error("Address has more values than street, number and addition")
         # Remove whitespace
-        street = street.replace(" ", "")
+        if street.endswith(" "):
+            street = street[:-1]
         number = number.replace(" ", "")
         addition = addition.replace("-", "")
         addition = addition.replace(" ", "")
