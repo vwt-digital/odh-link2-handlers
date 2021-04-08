@@ -109,128 +109,24 @@ class Link2Processor(object):
                         # Split field json on "_" to get a list
                         field_json_list = field_json.split("-")
                         # For every part of field_json
-                        for fj_part in field_json_list:
-                            success = False
-                            # If field_value is not empty
-                            if field_value:
-                                # Add a white space after the last found value
-                                field_value = f"{field_value} "
-                            # If value in part of field_json is "HARDCODED"
-                            if fj_part == "HARDCODED":
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.other_values_processor.hardcoded_value(
-                                    mapping_json, xml_root, field
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            # If value in part of field_json is "ADDRESS_SPLIT"
-                            elif fj_part == "ADDRESS_SPLIT":
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.other_values_processor.address_split_value(
-                                    field,
-                                    address_street,
-                                    address_number,
-                                    address_addition,
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            # If value in part of field_json is "FIRESTORE"
-                            elif fj_part == "FIRESTORE":
-                                (
-                                    success,
-                                    new_value,
-                                    new_logbooks,
-                                ) = self.firestore_values_processor.firestore_value(
-                                    field,
-                                    firestore_fields,
-                                    input_json,
-                                    logbooks,
-                                    added_jsons,
-                                )
-                                if success:
-                                    logbooks = new_logbooks
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            # If value in part of field_json in "COMBINED_JSON"
-                            elif fj_part == "COMBINED_JSON":
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.combined_values_processor.combined_value(
-                                    field, combined_json_fields, input_json
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            # If value in part of field_json in "COMBINED_XML"
-                            elif fj_part == "COMBINED_XML":
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.combined_values_processor.combined_value_xml(
-                                    field, combined_xml_fields, input_json, added_jsons
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            # If value in part of field_json is "TICKETNR"
-                            elif fj_part == "TICKETNR":
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.other_values_processor.ticket_number_value(
-                                    mapping_json, xml_root, input_json
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            # If value in part of field_json is "PREFIX"
-                            elif fj_part == "PREFIX":
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.other_values_processor.prefix_value(
-                                    field, prefixes_field, input_json
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            # If value in part of field_json is "DATE"
-                            elif fj_part == "DATE":
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.other_values_processor.date_value(
-                                    field, date_fields, input_json
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
-                            elif success is False:
-                                (
-                                    success,
-                                    new_value,
-                                ) = self.other_values_processor.message_value(
-                                    input_json, fj_part
-                                )
-                                if success:
-                                    field_value = field_value + new_value
-                                else:
-                                    return False
+                        field_value, logbooks = self.get_value_from_field(
+                            field_value,
+                            field_json_list,
+                            mapping_json,
+                            xml_root,
+                            input_json,
+                            field,
+                            address_street,
+                            address_number,
+                            address_addition,
+                            logbooks,
+                            firestore_fields,
+                            added_jsons,
+                            combined_json_fields,
+                            combined_xml_fields,
+                            prefixes_field,
+                            date_fields,
+                        )
                         # Check if the value contains "LEAVE_EMPTY" because then the whole value should stay empty
                         if "LEAVE_EMPTY" in field_value:
                             field_value = ""
@@ -239,28 +135,181 @@ class Link2Processor(object):
                             output_list.append(row)
                         else:
                             json_subelement.update(row)
-                    if only_values_bool is False:
-                        # If there is a xml root defined
-                        if xml_root:
-                            xml_json = {xml_root: {xml_root_sub: json_subelement}}
-                        # If there is not
-                        else:
-                            xml_json = {xml_root_sub: json_subelement}
-            if only_values_bool is False:
-                # Add JSON if it not already in list
-                if xml_json not in added_jsons:
-                    added_jsons.append(xml_json)
-                    # Append the filled out json and its filename
-                    xml_and_fn = []
-                    xml_and_fn.append(xml_json)
-                    filename_xml = self.make_filename(
-                        mapping_json[xml_root], input_json
+                    # Make xml_json
+                    xml_json = self.make_xml_json(
+                        xml_root, xml_root_sub, json_subelement, only_values_bool
                     )
-                    xml_and_fn.append(filename_xml)
-                    output_list.append(xml_and_fn)
+            # Update output list by checking if a root is necessary
+            output_list = self.make_output_list(
+                input_json,
+                xml_json,
+                xml_root,
+                added_jsons,
+                mapping_json,
+                output_list,
+                only_values_bool,
+            )
         if only_values_bool is False:
             output_list.extend(logbooks)
         return output_list
+
+    def make_xml_json(self, xml_root, xml_root_sub, json_subelement, only_values_bool):
+        xml_json = {}
+        # Check if there should be a root or not
+        if only_values_bool is False:
+            # If there is a xml root defined
+            if xml_root:
+                xml_json = {xml_root: {xml_root_sub: json_subelement}}
+            # If there is not
+            else:
+                xml_json = {xml_root_sub: json_subelement}
+        return xml_json
+
+    def make_output_list(
+        self,
+        input_json,
+        xml_json,
+        xml_root,
+        added_jsons,
+        mapping_json,
+        output_list,
+        only_values_bool,
+    ):
+        # Check if there should be a root or not
+        if only_values_bool is False:
+            # Add JSON if it not already in list
+            if xml_json not in added_jsons:
+                added_jsons.append(xml_json)
+                # Append the filled out json and its filename
+                xml_and_fn = []
+                xml_and_fn.append(xml_json)
+                filename_xml = self.make_filename(mapping_json[xml_root], input_json)
+                xml_and_fn.append(filename_xml)
+                output_list.append(xml_and_fn)
+        return output_list
+
+    def get_value_from_field(  # noqa: C901
+        self,
+        field_value,
+        field_json_list,
+        mapping_json,
+        xml_root,
+        input_json,
+        field,
+        address_street,
+        address_number,
+        address_addition,
+        logbooks,
+        firestore_fields,
+        added_jsons,
+        combined_json_fields,
+        combined_xml_fields,
+        prefixes_field,
+        date_fields,
+    ):
+        for fj_part in field_json_list:
+            success = False
+            # If field_value is not empty
+            if field_value:
+                # Add a white space after the last found value
+                field_value = f"{field_value} "
+            # If value in part of field_json is "HARDCODED"
+            if fj_part == "HARDCODED":
+                (success, new_value,) = self.other_values_processor.hardcoded_value(
+                    mapping_json, xml_root, field
+                )
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            # If value in part of field_json is "ADDRESS_SPLIT"
+            elif fj_part == "ADDRESS_SPLIT":
+                (success, new_value,) = self.other_values_processor.address_split_value(
+                    field,
+                    address_street,
+                    address_number,
+                    address_addition,
+                )
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            # If value in part of field_json is "FIRESTORE"
+            elif fj_part == "FIRESTORE":
+                (
+                    success,
+                    new_value,
+                    new_logbooks,
+                ) = self.firestore_values_processor.firestore_value(
+                    field,
+                    firestore_fields,
+                    input_json,
+                    logbooks,
+                    added_jsons,
+                )
+                if success:
+                    logbooks = new_logbooks
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            # If value in part of field_json in "COMBINED_JSON"
+            elif fj_part == "COMBINED_JSON":
+                (success, new_value,) = self.combined_values_processor.combined_value(
+                    field, combined_json_fields, input_json
+                )
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            # If value in part of field_json in "COMBINED_XML"
+            elif fj_part == "COMBINED_XML":
+                (
+                    success,
+                    new_value,
+                ) = self.combined_values_processor.combined_value_xml(
+                    field, combined_xml_fields, input_json, added_jsons
+                )
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            # If value in part of field_json is "TICKETNR"
+            elif fj_part == "TICKETNR":
+                (success, new_value,) = self.other_values_processor.ticket_number_value(
+                    mapping_json, xml_root, input_json
+                )
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            # If value in part of field_json is "PREFIX"
+            elif fj_part == "PREFIX":
+                (success, new_value,) = self.other_values_processor.prefix_value(
+                    field, prefixes_field, input_json
+                )
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            # If value in part of field_json is "DATE"
+            elif fj_part == "DATE":
+                (success, new_value,) = self.other_values_processor.date_value(
+                    field, date_fields, input_json
+                )
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+            elif success is False:
+                (
+                    success,
+                    new_value,
+                ) = self.other_values_processor.message_value(input_json, fj_part)
+                if success:
+                    field_value = field_value + new_value
+                else:
+                    return ""
+        return field_value, logbooks
 
     def json_to_fileshare(self, mapped_json, destfilepath):
         sourcefile = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
@@ -285,7 +334,9 @@ class Link2Processor(object):
 
     def split_streetname_nr(self, address):
         # Get street, number and addition from address
-        address_reg = re.split(r"(\d+)", address)
+        address_reg = re.split(r"(\d+|\D+)", address)
+        address_reg = list(filter(None, address_reg))
+        address_reg = [addr for addr in address_reg if addr.strip()]
         addition = ""
         if len(address_reg) <= 1:
             logging.error("Address misses street or number")
@@ -299,7 +350,8 @@ class Link2Processor(object):
         else:
             logging.error("Address has more values than street, number and addition")
         # Remove whitespace
-        street = street.replace(" ", "")
+        if street.endswith(" "):
+            street = street[:-1]
         number = number.replace(" ", "")
         addition = addition.replace("-", "")
         addition = addition.replace(" ", "")
