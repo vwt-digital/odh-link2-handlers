@@ -1,6 +1,6 @@
-import re
-import logging
 import datetime
+import logging
+import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -11,7 +11,7 @@ class OtherValuesProcessor(object):
 
     def get_ticket_nr(self, ticket_number_field, input_json):
         # Get all digits
-        digit_list = re.findall(r'\d+', input_json[ticket_number_field])
+        digit_list = re.findall(r"\d+", input_json[ticket_number_field])
         # Check if there's only 1 digit part
         if len(digit_list) > 1:
             logging.error("Multiple digit parts in ticket number")
@@ -27,14 +27,20 @@ class OtherValuesProcessor(object):
             if field in hardcoded_fields:
                 field_value = hardcoded_fields[field]
             else:
-                logging.error(f"The 'hardcoded_fields' field does not contain field {field}")
+                logging.error(
+                    f"The 'hardcoded_fields' field does not contain field {field}"
+                )
                 return False, field_value
         else:
-            logging.error("The config contains the value HARDCODED but the 'hardcoded_fields' field is not defined")
+            logging.error(
+                "The config contains the value HARDCODED but the 'hardcoded_fields' field is not defined"
+            )
             return False, field_value
         return True, field_value
 
-    def address_split_value(self, field, address_street, address_number, address_addition):
+    def address_split_value(
+        self, field, address_street, address_number, address_addition
+    ):
         field_value = ""
         # Check if address, number and addition are defined
         if address_street and address_number and address_addition:
@@ -45,7 +51,9 @@ class OtherValuesProcessor(object):
             elif field == address_addition[0]:
                 field_value = address_addition[1]
         else:
-            logging.error("Field should be split conform address split but address_split field is not defined")
+            logging.error(
+                "Field should be split conform address split but address_split field is not defined"
+            )
             return False, field_value
         return True, field_value
 
@@ -53,7 +61,7 @@ class OtherValuesProcessor(object):
         field_value = ""
         # Check what the field is that should be mapped to the ticket_number_field
         # Check if there's an ticket number field defined
-        ticket_number_field = mapping_json[xml_root].get('ticket_number_field')
+        ticket_number_field = mapping_json[xml_root].get("ticket_number_field")
         if ticket_number_field:
             ticket_nr = self.get_ticket_nr(ticket_number_field, input_json)
             if ticket_nr:
@@ -61,55 +69,77 @@ class OtherValuesProcessor(object):
             else:
                 return False, field_value
         else:
-            logging.error("Ticket number is needed but ticket number field is not defined")
+            logging.error(
+                "Ticket number is needed but ticket number field is not defined"
+            )
             return False, field_value
         return True, field_value
 
     def prefix_value(self, field, prefixes_field, input_json):
         field_value = ""
         if not prefixes_field:
-            logging.error("The config contains the value PREFIX but the 'prefixes' field is not defined")
+            logging.error(
+                "The config contains the value PREFIX but the 'prefixes' field is not defined"
+            )
             return False, field_value
         xml_dict = prefixes_field.get(field)
         if not xml_dict:
             logging.error(f"The field {field} cannot be found in the 'prefixes' field")
             return False, field_value
         # Check what the value is of the field
-        message_field = xml_dict.get('message_field')
+        message_field = xml_dict.get("message_field")
         field_value = input_json.get(message_field)
         if field_value == "None" or not field_value:
-            logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
+            logging.error(
+                f"The field {field} contains value PREFIX but the message field value cannot be found "
+            )
             return False, field_value
         # Check if the value starts with the specified prefixes
-        prefixes = xml_dict['prefixes']
+        prefixes = xml_dict["prefixes"]
         has_prefix = False
         for prefix in prefixes:
             if field_value.startswith(prefix):
                 has_prefix = True
         # If the message field does not have the right prefix
+        field_value = self.not_right_prefix(
+            has_prefix, message_field, xml_dict, input_json, field
+        )
+        return True, field_value
+
+    def not_right_prefix(self, has_prefix, message_field, xml_dict, input_json, field):
+        field_value = ""
         if has_prefix is False:
-            logging.info(f"The field {message_field} in the message does not start with any of"
-                         f" the defined prefixes in 'phonenumber_field', checking if there is an alternative field")
+            logging.info(
+                f"The field {message_field} in the message does not start with any of"
+                f" the defined prefixes in 'phonenumber_field', checking if there is an alternative field"
+            )
             # Check if the alternative message field does have the right prefix
-            alt_message_field = xml_dict.get('alternative_message_field')
+            alt_message_field = xml_dict.get("alternative_message_field")
             if not alt_message_field:
-                logging.info("No alternative message field found in 'prefixes' field in config")
-                return True, ""
+                logging.info(
+                    "No alternative message field found in 'prefixes' field in config"
+                )
+                return ""
             field_value = input_json.get(alt_message_field)
             if field_value == "None" or not field_value:
-                logging.error(f"The field {field} contains value PREFIX but the message field value cannot be found ")
-                return False, field_value
+                logging.info(
+                    f"The alternative field {alt_message_field} in the message does not start with any of"
+                    f" the defined prefixes in 'phonenumber_field', keeping {field} empty"
+                )
+                return ""
             # Check if the value starts with the specified prefixes
-            prefixes = xml_dict['prefixes']
+            prefixes = xml_dict["prefixes"]
             for prefix in prefixes:
                 if field_value.startswith(prefix):
                     has_prefix = True
             # If the alternative message field does not have the right prefix
             if has_prefix is False:
-                logging.info(f"The alternative field {alt_message_field} in the message does not start with any of"
-                             f" the defined prefixes in 'phonenumber_field', keeping {field} empty")
-                return True, ""
-        return True, field_value
+                logging.info(
+                    f"The alternative field {alt_message_field} in the message does not start with any of"
+                    f" the defined prefixes in 'phonenumber_field', keeping {field} empty"
+                )
+                return ""
+        return field_value
 
     def date_value(self, field, date_fields, input_json):
         field_value = ""
@@ -118,14 +148,16 @@ class OtherValuesProcessor(object):
         if not right_dict:
             logging.error(f"Field {field} cannot be found in 'date_fields' field")
             return False, field_value
-        json_field = right_dict['json_field']
+        json_field = right_dict["json_field"]
         # Get field from message
         success, original_value = self.message_value(input_json, json_field)
         if success is False:
-            logging.error(f"Field {json_field} defined in 'date_fields' could not be found in the message")
+            logging.error(
+                f"Field {json_field} defined in 'date_fields' could not be found in the message"
+            )
             return False, field_value
         # Get format
-        date_format = right_dict['format']
+        date_format = right_dict["format"]
         # Turn the JSON field into the right date format
         for df in date_format:
             # Check if this is the right format
