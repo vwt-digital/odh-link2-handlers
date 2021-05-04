@@ -7,6 +7,7 @@ This function consumes messages posted on a Pub/Sub Topic, turns them into XML f
     MESSAGE_PROPERTIES = Dictionary containing the field in the message where the data can be gathered from, this data is henceforth called "message"
     MAPPING_FIELD = A field in the incoming message which value gives the right mapping
     STANDARD_MAPPING = If the mapping field cannot be found in the message, this value is used to get the right mapping
+    ID = The ID in the message from where the message can be recognized, can also be an empty string.
     MAPPING = The mapping from the field of the published message to the XML file fields for Link2
     ~~~
 2. Make sure the following variables are present in the environment:
