@@ -6,8 +6,8 @@ import uuid
 import xmltodict
 from azure.core.exceptions import HttpResponseError
 from azure.storage.fileshare import ShareClient, ShareLeaseClient
-from config import (DEBUG_LOGGING, MAPPING, MAPPING_FIELD, MESSAGE_PROPERTIES,
-                    STANDARD_MAPPING)
+from config import (DEBUG_LOGGING, ID, MAPPING, MAPPING_FIELD,
+                    MESSAGE_PROPERTIES, STANDARD_MAPPING)
 from google.cloud import secretmanager
 
 from .combine_values import CombinedValuesProcessor
@@ -46,6 +46,7 @@ class Link2Processor(object):
         self.firestore_values_processor = FirestoreValuesProcessor(self)
         self.combined_values_processor = CombinedValuesProcessor(self)
         self.debug_logging = DEBUG_LOGGING
+        self.data_id = ID
 
     def log(self, debug_message, normal_message):
         if self.debug_logging:
@@ -402,6 +403,7 @@ class Link2Processor(object):
 
     def process(self, payload):
         selector_data = payload[self.data_selector]
+        logging.info(f"Message contains ID {selector_data[self.data_id]}")
 
         if isinstance(selector_data, list):
             for data in selector_data:
