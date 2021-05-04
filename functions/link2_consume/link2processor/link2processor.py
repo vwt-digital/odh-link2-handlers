@@ -403,7 +403,8 @@ class Link2Processor(object):
 
     def process(self, payload):
         selector_data = payload[self.data_selector]
-        logging.info(f"Message contains ID {selector_data[self.data_id]}")
+        if self.data_id:
+            logging.info(f"Message contains ID {selector_data[self.data_id]}")
 
         if isinstance(selector_data, list):
             for data in selector_data:
