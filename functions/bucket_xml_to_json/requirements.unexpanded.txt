@@ -2,5 +2,4 @@ dataclasses==0.6
 gobits==1.0.8
 google-cloud-storage==1.36.2
 google-cloud-pubsub==2.3.0
-urllib3==1.26.4
 xmltodict==0.12.0
