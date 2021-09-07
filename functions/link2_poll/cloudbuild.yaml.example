@@ -1,11 +1,11 @@
 ---
 steps:
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - name: 'eu.gcr.io/{cloudbuilders}/cloudbuilder-function-deploy'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        gcloud functions deploy ${PROJECT_ID}-poll-from-link2-func \
+        function_deploy.py ${PROJECT_ID}-poll-from-link2-func \
           --entry-point=json_to_link2 \
           --runtime=python37 \
           --trigger-http \
@@ -15,20 +15,17 @@ steps:
           --timeout=540 \
           --set-env-vars=PROJECT_ID=${PROJECT_ID} \
           --set-env-vars=AZURE_STORAGEKEY_SECRET_ID=${PROJECT_ID}-azure-storage-key \
-        gcloud beta functions set-iam-policy ${PROJECT_ID}-poll-from-link2-func \
-          --region=europe-west1 \
-          --project=${PROJECT_ID} ../../../config/${PROJECT_ID}/consume_func_permissions.json
+          --invoker=${PROJECT_ID} ../../../config/${PROJECT_ID}/consume_func_permissions.json
     dir: 'functions/link2_poll'
 
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - name: 'eu.gcr.io/{cloudbuilders}/cloudbuilder-scheduler-deploy'
     id: 'deploy-poll-from-link2-func-scheduler'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         _URI=https://europe-west1-${PROJECT_ID}.cloudfunctions.net/${PROJECT_ID}-poll-from-link2-func
-        gcloud scheduler jobs delete ${PROJECT_ID}-poll-from-link2-job --quiet || true
-        gcloud scheduler jobs create http ${PROJECT_ID}-poll-from-link2-job \
+        scheduler_deploy.py http ${PROJECT_ID}-poll-from-link2-job \
           --schedule='*/1 * * * *' \
           --uri=$${_URI} \
           --project=${PROJECT_ID} \

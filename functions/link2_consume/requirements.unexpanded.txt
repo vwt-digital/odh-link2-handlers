@@ -1,6 +1,0 @@
-azure-storage-file-share==12.4.1
-dataclasses==0.6
-google-cloud-firestore==2.0.2
-google-cloud-secret-manager==2.3.0
-Jinja2==2.11.3
-xmltodict==0.12.0
