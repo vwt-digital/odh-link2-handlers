@@ -27,8 +27,6 @@ class Link2Processor(object):
         )
         self.meta = MESSAGE_PROPERTIES[self.data_selector]
 
-        self.file_share_endpoint = None  # Will be loaded from configuration
-        self.file_share_folder_prefix = None  # Will be loaded from configuration
         self.file_share_api_key = get_secret(
             os.environ["PROJECT_ID"],
             os.environ["FILE_SHARE_API_KEY_SECRET_ID"]
@@ -307,26 +305,6 @@ class Link2Processor(object):
                     return ""
         return field_value, logbooks
 
-    def json_to_fileshare(self, mapped_json, destfilepath):
-        self.log(
-            f"Uploading file to file share ({destfilepath})",
-            "Uploading file to file share."
-        )
-
-        xml_data = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
-
-        headers = {
-            "Content-Type": "application/xml",
-            "Content-Disposition": f"attachment;filename=\"{destfilepath}\"",
-            "X-API-KEY": f"{self.file_share_api_key}"
-        }
-
-        self.session.post(
-            url=self.file_share_endpoint,
-            data=xml_data,
-            headers=headers
-        )
-
     def split_streetname_nr(self, address):
         # Get street, number and addition from address
         address_reg = re.split(r"(\d+|\D+)", address)
@@ -375,26 +353,6 @@ class Link2Processor(object):
             file_name_field = file_name_field.replace("GUID", guid)
         return file_name_field
 
-    def msg_to_fileshare(self, mapping_json, msg):
-        # Check if endpoint is set.
-        if self.file_share_endpoint:
-            # Map the message to XMLs
-            added_jsons = []
-            mapped_jsons = self.map_json(mapping_json, msg, False, added_jsons)
-            if not mapped_jsons:
-                return False
-            # For every kind of XML file
-            for dict_and_fn in mapped_jsons:
-                filled_in_json = dict_and_fn[0]
-                xml_filename = dict_and_fn[1]
-                # Make filename
-                address_destfilepath = f"{self.file_share_folder_prefix}{xml_filename}.xml"
-                # Put jsons on Azure Fileshare
-                self.json_to_fileshare(filled_in_json, address_destfilepath)
-        else:
-            logging.info("No storage account is set")
-        return True
-
     def process(self, payload):
         selector_data = payload[self.data_selector]
         if self.data_id:
@@ -412,9 +370,45 @@ class Link2Processor(object):
                 mapping_type = data.get(self.mapping_field, self.standard_mapping)
                 mapping_config = self.mapping[mapping_type]
 
-                self.file_share_endpoint = mapping_config["file_share_endpoint"]
-                self.file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
-                if not self.msg_to_fileshare(mapping_config["mapping"], data):
-                    logging.error("Message is not processed")
+                file_share_endpoint = mapping_config["file_share_endpoint"]
+                file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
+
+                mapped_json_objects = self.map_json(mapping_config["mapping"], data, False, [])
+                if mapped_json_objects:
+                    for mapped_json, file_name in mapped_json_objects:
+                        destination_file_path = f"{file_share_folder_prefix}{file_name}.xml"
+                        xml_data = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
+                        self._xml_content_to_file_share_api(
+                            api_endpoint=file_share_endpoint,
+                            api_key=self.file_share_api_key,
+                            xml_data=xml_data,
+                            destination_file_path=destination_file_path
+                        )
+                else:
+                    logging.error("Mapped JSON objects are empty.")
         else:
             logging.error("Message is not a list or a dictionary")
+
+    def _xml_content_to_file_share_api(
+            self,
+            api_endpoint,
+            api_key,
+            xml_data,
+            destination_file_path
+    ):
+        self.log(
+            f"Uploading file to file share ({destination_file_path})",
+            "Uploading file to file share."
+        )
+
+        headers = {
+            "Content-Type": "application/xml",
+            "Content-Disposition": f"attachment;filename=\"{destination_file_path}\"",
+            "X-API-KEY": f"{api_key}"
+        }
+
+        self.session.post(
+            url=api_endpoint,
+            data=xml_data,
+            headers=headers
+        )
