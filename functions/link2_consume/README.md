@@ -49,9 +49,8 @@ The mapping parameter is a dictionary which is set up as illustrated below:
 ~~~JSON
 {
     "mapping_field_value": {
-        "azure_storage_account": "azure-storage-account",
-        "azure_destshare": "azure-destination-share",
-        "azure_destshare_folders": "folder_1/folder_2/folder_etcetera",
+        "file_share_endpoint": "https://www.example.com/some_azure_endpoint",
+        "file_share_folder_prefix": "path/to/destination/folder",
         "mapping": {
             "xml_root": {
                 "xml_subroot": {
@@ -285,9 +284,8 @@ Below is a full example of a mapping JSON.
 ~~~JSON
 {
     "CREATE": {
-        "azure_storage_account": "azure-storage-acccount",
-        "azure_destshare": "azure-destination-share",
-        "azure_destshare_folders": "folder1/folder2/",
+        "file_share_endpoint": "https://www.example.com/some_azure_endpoint",
+        "file_share_folder_prefix": "path/to/destination/folder",
         "mapping": {
             "Addresses": {
                     "Address": {

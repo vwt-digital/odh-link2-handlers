@@ -18,3 +18,11 @@ steps:
           --set-env-vars=AZURE_STORAGEKEY_SECRET_ID=${PROJECT_ID}-azure-storage-key \
           --invoker=${PROJECT_ID} ../../../config/${PROJECT_ID}/consume_func_permissions.json
     dir: 'functions/link2_consume'
+
+  - name: 'eu.gcr.io/{cloudbuilders}/cloudbuilder-import-common'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        import_common.py
+    dir: 'functions/link2_consume'

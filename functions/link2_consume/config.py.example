@@ -37,9 +37,8 @@ MESSAGE_PROPERTIES = {
 
 MAPPING = {
     "mapping_field_value": {
-        "azure_storage_account": "azure-storage-account",
-        "azure_destshare": "azure-destination-share",
-        "azure_destshare_folders": "folder_1/folder_2/folder_etcetera",
+        "file_share_endpoint": "https://www.example.com/some_azure_endpoint",
+        "file_share_folder_prefix": "path/to/destination/folder",
         "mapping": {
             "xml_root": {
                 "xml_subroot": {
