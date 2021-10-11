@@ -4,11 +4,10 @@ import re
 import uuid
 
 import xmltodict
-from azure.storage.fileshare import ShareClient
 from config import (DEBUG_LOGGING, ID, MAPPING, MAPPING_FIELD,
                     MESSAGE_PROPERTIES, STANDARD_MAPPING)
-from google.cloud import secretmanager
 
+from functions.common.utils import get_secret
 from functions.common.requests_retry_session import get_requests_session
 from .combine_values import CombinedValuesProcessor
 from .firestore_values import FirestoreValuesProcessor
@@ -27,19 +26,14 @@ class Link2Processor(object):
             "DATA_SELECTOR", "Required parameter is missing"
         )
         self.meta = MESSAGE_PROPERTIES[self.data_selector]
-        self.destshare = ""
-        self.folder_prefix = ""
-        self.storageaccount = ""
-        self.share = None
-        self.project_id = os.environ.get("PROJECT_ID", "Required parameter is missing")
-        self.storagekey_secret_id = os.environ.get(
-            "AZURE_STORAGEKEY_SECRET_ID", "Required parameter is missing"
+
+        self.file_share_endpoint = None  # Will be loaded from configuration
+        self.file_share_folder_prefix = None  # Will be loaded from configuration
+        self.file_share_api_key = get_secret(
+            os.environ["PROJECT_ID"],
+            os.environ["FILE_SHARE_API_KEY_SECRET_ID"]
         )
-        self.storagekey = None
-        client = secretmanager.SecretManagerServiceClient()
-        secret_name = f"projects/{self.project_id}/secrets/{self.storagekey_secret_id}/versions/latest"
-        key_response = client.access_secret_version(request={"name": secret_name})
-        self.storagekey = key_response.payload.data.decode("UTF-8")
+
         self.mapping_field = MAPPING_FIELD
         self.standard_mapping = STANDARD_MAPPING
         self.mapping = MAPPING
@@ -382,8 +376,8 @@ class Link2Processor(object):
         return file_name_field
 
     def msg_to_fileshare(self, mapping_json, msg):
-        # Check if storage account is set
-        if self.storageaccount:
+        # Check if endpoint is set.
+        if self.file_share_endpoint:
             # Map the message to XMLs
             added_jsons = []
             mapped_jsons = self.map_json(mapping_json, msg, False, added_jsons)
@@ -394,7 +388,7 @@ class Link2Processor(object):
                 filled_in_json = dict_and_fn[0]
                 xml_filename = dict_and_fn[1]
                 # Make filename
-                address_destfilepath = f"{self.folder_prefix}{xml_filename}.xml"
+                address_destfilepath = f"{self.file_share_folder_prefix}{xml_filename}.xml"
                 # Put jsons on Azure Fileshare
                 self.json_to_fileshare(filled_in_json, address_destfilepath)
         else:
@@ -415,15 +409,9 @@ class Link2Processor(object):
                 mapping_config = self.mapping[self.standard_mapping]
                 if map_kind:
                     mapping_config = self.mapping[map_kind]
-                # Set Azure settings right
-                self.destshare = mapping_config["azure_destshare"]
-                self.folder_prefix = mapping_config["azure_destshare_folders"]
-                self.storageaccount = mapping_config["azure_storage_account"]
-                self.share = ShareClient(
-                    account_url=f"https://{self.storageaccount}.file.core.windows.net/",
-                    share_name=self.destshare,
-                    credential=self.storagekey,
-                )
+                # Set file share settings.
+                self.file_share_endpoint = mapping_config["file_share_endpoint"]
+                self.file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
                 if not self.msg_to_fileshare(mapping_config["mapping"], data):
                     logging.error("Message is not processed")
         elif isinstance(selector_data, dict):
@@ -434,15 +422,9 @@ class Link2Processor(object):
             mapping_config = self.mapping[self.standard_mapping]
             if map_kind:
                 mapping_config = self.mapping[map_kind]
-            # Set Azure settings right
-            self.destshare = mapping_config["azure_destshare"]
-            self.folder_prefix = mapping_config["azure_destshare_folders"]
-            self.storageaccount = mapping_config["azure_storage_account"]
-            self.share = ShareClient(
-                account_url=f"https://{self.storageaccount}.file.core.windows.net/",
-                share_name=self.destshare,
-                credential=self.storagekey,
-            )
+            # Set file share settings.
+            self.file_share_endpoint = mapping_config["file_share_endpoint"]
+            self.file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
             if not self.msg_to_fileshare(mapping_config["mapping"], selector_data):
                 logging.error("Message is not processed")
         else:
