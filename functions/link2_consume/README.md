@@ -1,5 +1,6 @@
 # Consume for Link2
-This function consumes messages posted on a Pub/Sub Topic, turns them into XML files and puts them on an Azure fileshare.
+This function consumes messages posted on a Pub/Sub Topic, the JSON data of this message is converted to 
+mapped XML data. This XML data is sent to a custom API endpoint, which will put it in an Azure file share.
 
 ## Setup
 1. Make sure a ```config.py``` file exists within the directory, based on the [config.example.py](config.example.py), with the correct configuration:
