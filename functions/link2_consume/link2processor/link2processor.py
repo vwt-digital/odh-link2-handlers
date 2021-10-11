@@ -4,6 +4,8 @@ import re
 import uuid
 import xmltodict
 
+from requests.exceptions import ConnectionError, HTTPError, RetryError
+
 from config import (
     DEBUG_LOGGING,
     ID,
@@ -402,7 +404,7 @@ class Link2Processor(object):
             api_key: str,
             xml_data: str,
             destination_file_path: str
-    ) -> None:
+    ) -> bool:
         """
         Sends XML content to a file share API.
 
@@ -414,8 +416,8 @@ class Link2Processor(object):
         :type xml_data: str
         :param destination_file_path: The file location where the XML contents will be stored on the file share.
         :type destination_file_path: str
-        :return: None
-        :rtype: None
+        :return: True when successful, False otherwise.
+        :rtype: bool
         """
         self._log(
             f"Uploading file to file share ({destination_file_path})",
@@ -428,10 +430,21 @@ class Link2Processor(object):
             "X-API-KEY": f"{api_key}"
         }
 
-        self.session.post(
-            url=api_endpoint,
-            data=xml_data,
-            headers=headers
-        )
+        try:
+            response = self.session.post(
+                url=api_endpoint,
+                data=xml_data,
+                headers=headers
+            )
+            if response.status_code == 200:
+                return True
+            else:
+                logging.error(f"File share API returned unexpected status code '{response.status_code}'.")
+        except (
+            ConnectionError,
+            HTTPError,
+            RetryError,
+        ) as exception:
+            logging.error(f"Could not upload {destination_file_path} to file share API: {str(exception)}")
 
-        # TODO: Return status
+        return False
