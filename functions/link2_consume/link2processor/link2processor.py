@@ -9,6 +9,7 @@ from config import (DEBUG_LOGGING, ID, MAPPING, MAPPING_FIELD,
                     MESSAGE_PROPERTIES, STANDARD_MAPPING)
 from google.cloud import secretmanager
 
+from functions.common.requests_retry_session import get_requests_session
 from .combine_values import CombinedValuesProcessor
 from .firestore_values import FirestoreValuesProcessor
 from .other_values import OtherValuesProcessor
@@ -21,6 +22,7 @@ logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
 
 class Link2Processor(object):
     def __init__(self):
+        self.session = get_requests_session()
         self.data_selector = os.environ.get(
             "DATA_SELECTOR", "Required parameter is missing"
         )
