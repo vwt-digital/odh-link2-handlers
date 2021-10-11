@@ -367,6 +367,7 @@ class Link2Processor(object):
         if self.data_id:
             logging.info(f"Message contains ID {selector_data[self.data_id]}")
 
+        # Making sure data is a list.
         data_list = None
         if isinstance(selector_data, list):
             data_list = selector_data
@@ -379,12 +380,16 @@ class Link2Processor(object):
                 mapping_type = data.get(self.mapping_field, self.standard_mapping)
                 mapping_config = self.mapping[mapping_type]
 
+                # Getting file share API settings.
                 file_share_endpoint = mapping_config["file_share_endpoint"]
                 file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
 
+                # Mapping JSON according to found mapping configuration.
                 mapped_json_objects = self.map_json(mapping_config["mapping"], data, False, [])
+
                 if mapped_json_objects:
                     for mapped_json, file_name in mapped_json_objects:
+                        # Uploading data to file share API.
                         destination_file_path = f"{file_share_folder_prefix}{file_name}.xml"
                         xml_data = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
                         self._xml_content_to_file_share_api(
