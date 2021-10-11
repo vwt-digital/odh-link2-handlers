@@ -4,8 +4,7 @@ import re
 import uuid
 
 import xmltodict
-from azure.core.exceptions import HttpResponseError
-from azure.storage.fileshare import ShareClient, ShareLeaseClient
+from azure.storage.fileshare import ShareClient
 from config import (DEBUG_LOGGING, ID, MAPPING, MAPPING_FIELD,
                     MESSAGE_PROPERTIES, STANDARD_MAPPING)
 from google.cloud import secretmanager
@@ -313,25 +312,24 @@ class Link2Processor(object):
         return field_value, logbooks
 
     def json_to_fileshare(self, mapped_json, destfilepath):
-        sourcefile = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
-        # Put file on fileshare
         self.log(
-            f"Putting {destfilepath} on //{self.storageaccount}/{self.destshare}",
-            "Putting file on fileshare",
+            f"Uploading file to file share ({destfilepath})",
+            "Uploading file to file share."
         )
-        file_on_share = self.share.get_file_client(destfilepath)
-        try:
-            file_on_share.create_file(size=0)
-        except HttpResponseError:
-            ShareLeaseClient(file_on_share).break_lease()
-            file_on_share.create_file(size=0)
-        file_lease = file_on_share.acquire_lease(timeout=5)
-        self.log(
-            f"Writing to //{self.storageaccount}/{self.destshare}/{destfilepath}",
-            "Writing to fileshare",
+
+        xml_data = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
+
+        headers = {
+            "Content-Type": "application/xml",
+            "Content-Disposition": f"attachment;filename=\"{destfilepath}\"",
+            "X-API-KEY": f"{self.file_share_api_key}"
+        }
+
+        self.session.post(
+            url=self.file_share_endpoint,
+            data=xml_data,
+            headers=headers
         )
-        file_on_share.upload_file(sourcefile, lease=file_lease)
-        file_lease.release(timeout=5)
 
     def split_streetname_nr(self, address):
         # Get street, number and addition from address
