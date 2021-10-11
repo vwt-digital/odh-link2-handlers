@@ -400,32 +400,21 @@ class Link2Processor(object):
         if self.data_id:
             logging.info(f"Message contains ID {selector_data[self.data_id]}")
 
+        data_list = None
         if isinstance(selector_data, list):
-            for data in selector_data:
-                # First get right mapping
-                # Check if mapping field can be found in message
-                map_kind = data.get(self.mapping_field)
-                # Use standard mapping unless mapping field is found
-                mapping_config = self.mapping[self.standard_mapping]
-                if map_kind:
-                    mapping_config = self.mapping[map_kind]
-                # Set file share settings.
+            data_list = selector_data
+        elif isinstance(selector_data, dict):
+            data_list = [selector_data]
+
+        if data_list is not None:
+            for data in data_list:
+                # Check if mapping type is specified, else use default.
+                mapping_type = data.get(self.mapping_field, self.standard_mapping)
+                mapping_config = self.mapping[mapping_type]
+
                 self.file_share_endpoint = mapping_config["file_share_endpoint"]
                 self.file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
                 if not self.msg_to_fileshare(mapping_config["mapping"], data):
                     logging.error("Message is not processed")
-        elif isinstance(selector_data, dict):
-            # First get right mapping
-            # Check if mapping field can be found in message
-            map_kind = selector_data.get(self.mapping_field)
-            # Use standard mapping unless mapping field is found
-            mapping_config = self.mapping[self.standard_mapping]
-            if map_kind:
-                mapping_config = self.mapping[map_kind]
-            # Set file share settings.
-            self.file_share_endpoint = mapping_config["file_share_endpoint"]
-            self.file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
-            if not self.msg_to_fileshare(mapping_config["mapping"], selector_data):
-                logging.error("Message is not processed")
         else:
             logging.error("Message is not a list or a dictionary")
