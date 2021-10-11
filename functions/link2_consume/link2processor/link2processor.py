@@ -2,10 +2,16 @@ import logging
 import os
 import re
 import uuid
-
 import xmltodict
-from config import (DEBUG_LOGGING, ID, MAPPING, MAPPING_FIELD,
-                    MESSAGE_PROPERTIES, STANDARD_MAPPING)
+
+from config import (
+    DEBUG_LOGGING,
+    ID,
+    MAPPING,
+    MAPPING_FIELD,
+    MESSAGE_PROPERTIES,
+    STANDARD_MAPPING
+)
 
 from functions.common.utils import get_secret
 from functions.common.requests_retry_session import get_requests_session
@@ -41,7 +47,7 @@ class Link2Processor(object):
         self.debug_logging = DEBUG_LOGGING
         self.data_id = ID
 
-    def log(self, debug_message, normal_message):
+    def _log(self, debug_message, normal_message):
         if self.debug_logging:
             logging.info(debug_message)
         else:
@@ -61,7 +67,7 @@ class Link2Processor(object):
                 # for every address field
                 for address_field in address_split:
                     # Have to split address into streetname and number
-                    street, number, addition = self.split_streetname_nr(
+                    street, number, addition = self._split_streetname_nr(
                         input_json[address_field]
                     )
                     address_street = [
@@ -103,7 +109,7 @@ class Link2Processor(object):
                         # Split field json on "_" to get a list
                         field_json_list = field_json.split("-")
                         # For every part of field_json
-                        field_value, logbooks = self.get_value_from_field(
+                        field_value, logbooks = self._get_value_from_field(
                             field_value,
                             field_json_list,
                             mapping_json,
@@ -130,11 +136,11 @@ class Link2Processor(object):
                         else:
                             json_subelement.update(row)
                     # Make xml_json
-                    xml_json = self.make_xml_json(
+                    xml_json = self._make_xml_json(
                         xml_root, xml_root_sub, json_subelement, only_values_bool
                     )
             # Update output list by checking if a root is necessary
-            output_list = self.make_output_list(
+            output_list = self._make_output_list(
                 input_json,
                 xml_json,
                 xml_root,
@@ -147,7 +153,8 @@ class Link2Processor(object):
             output_list.extend(logbooks)
         return output_list
 
-    def make_xml_json(self, xml_root, xml_root_sub, json_subelement, only_values_bool):
+    @staticmethod
+    def _make_xml_json(xml_root, xml_root_sub, json_subelement, only_values_bool):
         xml_json = {}
         # Check if there should be a root or not
         if only_values_bool is False:
@@ -159,7 +166,7 @@ class Link2Processor(object):
                 xml_json = {xml_root_sub: json_subelement}
         return xml_json
 
-    def make_output_list(
+    def _make_output_list(
         self,
         input_json,
         xml_json,
@@ -177,12 +184,12 @@ class Link2Processor(object):
                 # Append the filled out json and its filename
                 xml_and_fn = []
                 xml_and_fn.append(xml_json)
-                filename_xml = self.make_filename(mapping_json[xml_root], input_json)
+                filename_xml = self._make_filename(mapping_json[xml_root], input_json)
                 xml_and_fn.append(filename_xml)
                 output_list.append(xml_and_fn)
         return output_list
 
-    def get_value_from_field(  # noqa: C901
+    def _get_value_from_field(  # noqa: C901
         self,
         field_value,
         field_json_list,
@@ -305,7 +312,7 @@ class Link2Processor(object):
                     return ""
         return field_value, logbooks
 
-    def split_streetname_nr(self, address):
+    def _split_streetname_nr(self, address):
         # Get street, number and addition from address
         address_reg = re.split(r"(\d+|\D+)", address)
         address_reg = list(filter(None, address_reg))
@@ -330,7 +337,7 @@ class Link2Processor(object):
         addition = addition.replace(" ", "")
         return street, number, addition
 
-    def make_filename(self, sub_root_mapping, msg):
+    def _make_filename(self, sub_root_mapping, msg):
         # Get the filename field
         file_name_field = sub_root_mapping["xml_filename"]
         # If filename contains "TICKETNR", it should be changed into the ticket number
@@ -391,12 +398,26 @@ class Link2Processor(object):
 
     def _xml_content_to_file_share_api(
             self,
-            api_endpoint,
-            api_key,
-            xml_data,
-            destination_file_path
-    ):
-        self.log(
+            api_endpoint: str,
+            api_key: str,
+            xml_data: str,
+            destination_file_path: str
+    ) -> None:
+        """
+        Sends XML content to a file share API.
+
+        :param api_endpoint: The URI of the API's endpoint.
+        :type api_endpoint: str
+        :param api_key: The API key/token.
+        :type api_key: str
+        :param xml_data: The XML data to send to the endpoint.
+        :type xml_data: str
+        :param destination_file_path: The file location where the XML contents will be stored on the file share.
+        :type destination_file_path: str
+        :return: None
+        :rtype: None
+        """
+        self._log(
             f"Uploading file to file share ({destination_file_path})",
             "Uploading file to file share."
         )
@@ -412,3 +433,5 @@ class Link2Processor(object):
             data=xml_data,
             headers=headers
         )
+
+        # TODO: Return status
