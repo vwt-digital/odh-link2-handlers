@@ -15,7 +15,7 @@ mapped XML data. This XML data is sent to a custom API endpoint, which will put 
     ~~~
     DATA_SELECTOR = The identifier used for this configuration
     PROJECT_ID = The project ID of the GCP project the function is deployed to
-    AZURE_STORAGEKEY_SECRET_ID = The Azure storage key
+    FILE_SHARE_API_KEY_SECRET_ID = The file share API key's Google Secret ID
     ~~~
 3. Deploy the function with help of the [cloudbuild.example.yaml](cloudbuild.example.yaml) to the Google Cloud Platform.
 
