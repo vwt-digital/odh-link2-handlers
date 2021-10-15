@@ -1,5 +1,6 @@
 # Consume for Link2
-This function consumes messages posted on a Pub/Sub Topic, turns them into XML files and puts them on an Azure fileshare.
+This function consumes messages posted on a Pub/Sub Topic, the JSON data of this message is converted to 
+mapped XML data. This XML data is sent to a custom API endpoint, which will put it in an Azure file share.
 
 ## Setup
 1. Make sure a ```config.py``` file exists within the directory, based on the [config.example.py](config.example.py), with the correct configuration:
@@ -14,7 +15,7 @@ This function consumes messages posted on a Pub/Sub Topic, turns them into XML f
     ~~~
     DATA_SELECTOR = The identifier used for this configuration
     PROJECT_ID = The project ID of the GCP project the function is deployed to
-    AZURE_STORAGEKEY_SECRET_ID = The Azure storage key
+    FILE_SHARE_API_KEY_SECRET_ID = The file share API key's Google Secret ID
     ~~~
 3. Deploy the function with help of the [cloudbuild.example.yaml](cloudbuild.example.yaml) to the Google Cloud Platform.
 
@@ -49,9 +50,8 @@ The mapping parameter is a dictionary which is set up as illustrated below:
 ~~~JSON
 {
     "mapping_field_value": {
-        "azure_storage_account": "azure-storage-account",
-        "azure_destshare": "azure-destination-share",
-        "azure_destshare_folders": "folder_1/folder_2/folder_etcetera",
+        "file_share_endpoint": "https://www.example.com/some_azure_endpoint",
+        "file_share_folder_prefix": "path/to/destination/folder",
         "mapping": {
             "xml_root": {
                 "xml_subroot": {
@@ -285,9 +285,8 @@ Below is a full example of a mapping JSON.
 ~~~JSON
 {
     "CREATE": {
-        "azure_storage_account": "azure-storage-acccount",
-        "azure_destshare": "azure-destination-share",
-        "azure_destshare_folders": "folder1/folder2/",
+        "file_share_endpoint": "https://www.example.com/some_azure_endpoint",
+        "file_share_folder_prefix": "path/to/destination/folder",
         "mapping": {
             "Addresses": {
                     "Address": {
