@@ -2,10 +2,18 @@ import logging
 import os
 import re
 import uuid
-
 import xmltodict
-from config import (DEBUG_LOGGING, ID, MAPPING, MAPPING_FIELD,
-                    MESSAGE_PROPERTIES, STANDARD_MAPPING)
+
+from requests.exceptions import ConnectionError, HTTPError, RetryError
+
+from config import (
+    DEBUG_LOGGING,
+    ID,
+    MAPPING,
+    MAPPING_FIELD,
+    MESSAGE_PROPERTIES,
+    STANDARD_MAPPING
+)
 
 from functions.common.utils import get_secret
 from functions.common.requests_retry_session import get_requests_session
@@ -27,8 +35,6 @@ class Link2Processor(object):
         )
         self.meta = MESSAGE_PROPERTIES[self.data_selector]
 
-        self.file_share_endpoint = None  # Will be loaded from configuration
-        self.file_share_folder_prefix = None  # Will be loaded from configuration
         self.file_share_api_key = get_secret(
             os.environ["PROJECT_ID"],
             os.environ["FILE_SHARE_API_KEY_SECRET_ID"]
@@ -43,7 +49,7 @@ class Link2Processor(object):
         self.debug_logging = DEBUG_LOGGING
         self.data_id = ID
 
-    def log(self, debug_message, normal_message):
+    def _log(self, debug_message, normal_message):
         if self.debug_logging:
             logging.info(debug_message)
         else:
@@ -63,7 +69,7 @@ class Link2Processor(object):
                 # for every address field
                 for address_field in address_split:
                     # Have to split address into streetname and number
-                    street, number, addition = self.split_streetname_nr(
+                    street, number, addition = self._split_streetname_nr(
                         input_json[address_field]
                     )
                     address_street = [
@@ -105,7 +111,7 @@ class Link2Processor(object):
                         # Split field json on "_" to get a list
                         field_json_list = field_json.split("-")
                         # For every part of field_json
-                        field_value, logbooks = self.get_value_from_field(
+                        field_value, logbooks = self._get_value_from_field(
                             field_value,
                             field_json_list,
                             mapping_json,
@@ -132,11 +138,11 @@ class Link2Processor(object):
                         else:
                             json_subelement.update(row)
                     # Make xml_json
-                    xml_json = self.make_xml_json(
+                    xml_json = self._make_xml_json(
                         xml_root, xml_root_sub, json_subelement, only_values_bool
                     )
             # Update output list by checking if a root is necessary
-            output_list = self.make_output_list(
+            output_list = self._make_output_list(
                 input_json,
                 xml_json,
                 xml_root,
@@ -149,7 +155,8 @@ class Link2Processor(object):
             output_list.extend(logbooks)
         return output_list
 
-    def make_xml_json(self, xml_root, xml_root_sub, json_subelement, only_values_bool):
+    @staticmethod
+    def _make_xml_json(xml_root, xml_root_sub, json_subelement, only_values_bool):
         xml_json = {}
         # Check if there should be a root or not
         if only_values_bool is False:
@@ -161,7 +168,7 @@ class Link2Processor(object):
                 xml_json = {xml_root_sub: json_subelement}
         return xml_json
 
-    def make_output_list(
+    def _make_output_list(
         self,
         input_json,
         xml_json,
@@ -179,12 +186,12 @@ class Link2Processor(object):
                 # Append the filled out json and its filename
                 xml_and_fn = []
                 xml_and_fn.append(xml_json)
-                filename_xml = self.make_filename(mapping_json[xml_root], input_json)
+                filename_xml = self._make_filename(mapping_json[xml_root], input_json)
                 xml_and_fn.append(filename_xml)
                 output_list.append(xml_and_fn)
         return output_list
 
-    def get_value_from_field(  # noqa: C901
+    def _get_value_from_field(  # noqa: C901
         self,
         field_value,
         field_json_list,
@@ -307,27 +314,7 @@ class Link2Processor(object):
                     return ""
         return field_value, logbooks
 
-    def json_to_fileshare(self, mapped_json, destfilepath):
-        self.log(
-            f"Uploading file to file share ({destfilepath})",
-            "Uploading file to file share."
-        )
-
-        xml_data = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
-
-        headers = {
-            "Content-Type": "application/xml",
-            "Content-Disposition": f"attachment;filename=\"{destfilepath}\"",
-            "X-API-KEY": f"{self.file_share_api_key}"
-        }
-
-        self.session.post(
-            url=self.file_share_endpoint,
-            data=xml_data,
-            headers=headers
-        )
-
-    def split_streetname_nr(self, address):
+    def _split_streetname_nr(self, address):
         # Get street, number and addition from address
         address_reg = re.split(r"(\d+|\D+)", address)
         address_reg = list(filter(None, address_reg))
@@ -352,7 +339,7 @@ class Link2Processor(object):
         addition = addition.replace(" ", "")
         return street, number, addition
 
-    def make_filename(self, sub_root_mapping, msg):
+    def _make_filename(self, sub_root_mapping, msg):
         # Get the filename field
         file_name_field = sub_root_mapping["xml_filename"]
         # If filename contains "TICKETNR", it should be changed into the ticket number
@@ -375,57 +362,94 @@ class Link2Processor(object):
             file_name_field = file_name_field.replace("GUID", guid)
         return file_name_field
 
-    def msg_to_fileshare(self, mapping_json, msg):
-        # Check if endpoint is set.
-        if self.file_share_endpoint:
-            # Map the message to XMLs
-            added_jsons = []
-            mapped_jsons = self.map_json(mapping_json, msg, False, added_jsons)
-            if not mapped_jsons:
-                return False
-            # For every kind of XML file
-            for dict_and_fn in mapped_jsons:
-                filled_in_json = dict_and_fn[0]
-                xml_filename = dict_and_fn[1]
-                # Make filename
-                address_destfilepath = f"{self.file_share_folder_prefix}{xml_filename}.xml"
-                # Put jsons on Azure Fileshare
-                self.json_to_fileshare(filled_in_json, address_destfilepath)
-        else:
-            logging.info("No storage account is set")
-        return True
-
     def process(self, payload):
         selector_data = payload[self.data_selector]
         if self.data_id:
             logging.info(f"Message contains ID {selector_data[self.data_id]}")
 
+        # Making sure data is a list.
+        data_list = None
         if isinstance(selector_data, list):
-            for data in selector_data:
-                # First get right mapping
-                # Check if mapping field can be found in message
-                map_kind = data.get(self.mapping_field)
-                # Use standard mapping unless mapping field is found
-                mapping_config = self.mapping[self.standard_mapping]
-                if map_kind:
-                    mapping_config = self.mapping[map_kind]
-                # Set file share settings.
-                self.file_share_endpoint = mapping_config["file_share_endpoint"]
-                self.file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
-                if not self.msg_to_fileshare(mapping_config["mapping"], data):
-                    logging.error("Message is not processed")
+            data_list = selector_data
         elif isinstance(selector_data, dict):
-            # First get right mapping
-            # Check if mapping field can be found in message
-            map_kind = selector_data.get(self.mapping_field)
-            # Use standard mapping unless mapping field is found
-            mapping_config = self.mapping[self.standard_mapping]
-            if map_kind:
-                mapping_config = self.mapping[map_kind]
-            # Set file share settings.
-            self.file_share_endpoint = mapping_config["file_share_endpoint"]
-            self.file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
-            if not self.msg_to_fileshare(mapping_config["mapping"], selector_data):
-                logging.error("Message is not processed")
+            data_list = [selector_data]
+
+        if data_list is not None:
+            for data in data_list:
+                # Check if mapping type is specified, else use default.
+                mapping_type = data.get(self.mapping_field, self.standard_mapping)
+                mapping_config = self.mapping[mapping_type]
+
+                # Getting file share API settings.
+                file_share_endpoint = mapping_config["file_share_endpoint"]
+                file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
+
+                # Mapping JSON according to found mapping configuration.
+                mapped_json_objects = self.map_json(mapping_config["mapping"], data, False, [])
+
+                if mapped_json_objects:
+                    for mapped_json, file_name in mapped_json_objects:
+                        # Uploading data to file share API.
+                        destination_file_path = f"{file_share_folder_prefix}{file_name}.xml"
+                        xml_data = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
+                        self._xml_content_to_file_share_api(
+                            api_endpoint=file_share_endpoint,
+                            api_key=self.file_share_api_key,
+                            xml_data=xml_data,
+                            destination_file_path=destination_file_path
+                        )
+                else:
+                    logging.error("Mapped JSON objects are empty.")
         else:
             logging.error("Message is not a list or a dictionary")
+
+    def _xml_content_to_file_share_api(
+            self,
+            api_endpoint: str,
+            api_key: str,
+            xml_data: str,
+            destination_file_path: str
+    ) -> bool:
+        """
+        Sends XML content to a file share API.
+
+        :param api_endpoint: The URI of the API's endpoint.
+        :type api_endpoint: str
+        :param api_key: The API key/token.
+        :type api_key: str
+        :param xml_data: The XML data to send to the endpoint.
+        :type xml_data: str
+        :param destination_file_path: The file location where the XML contents will be stored on the file share.
+        :type destination_file_path: str
+        :return: True when successful, False otherwise.
+        :rtype: bool
+        """
+        self._log(
+            f"Uploading file to file share ({destination_file_path})",
+            "Uploading file to file share."
+        )
+
+        headers = {
+            "Content-Type": "application/xml",
+            "Content-Disposition": f"attachment;filename=\"{destination_file_path}\"",
+            "X-API-KEY": f"{api_key}"
+        }
+
+        try:
+            response = self.session.post(
+                url=api_endpoint,
+                data=xml_data,
+                headers=headers
+            )
+            if response.status_code == 200:
+                return True
+            else:
+                logging.error(f"File share API returned unexpected status code '{response.status_code}'.")
+        except (
+            ConnectionError,
+            HTTPError,
+            RetryError,
+        ) as exception:
+            logging.error(f"Could not upload {destination_file_path} to file share API: {str(exception)}")
+
+        return False
