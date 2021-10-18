@@ -40,6 +40,11 @@ class Link2Processor(object):
             os.environ["FILE_SHARE_API_KEY_SECRET_ID"]
         )
 
+        self.file_share_endpoint_code = get_secret(
+            os.environ["PROJECT_ID"],
+            os.environ["FILE_SHARE_ENDPOINT_CODE"]
+        )
+
         self.mapping_field = MAPPING_FIELD
         self.standard_mapping = STANDARD_MAPPING
         self.mapping = MAPPING
@@ -394,6 +399,7 @@ class Link2Processor(object):
                         xml_data = xmltodict.unparse(mapped_json, encoding="ISO-8859-1", pretty=True)
                         self._xml_content_to_file_share_api(
                             api_endpoint=file_share_endpoint,
+                            api_endpoint_code=self.file_share_endpoint_code,
                             api_key=self.file_share_api_key,
                             xml_data=xml_data,
                             destination_file_path=destination_file_path
@@ -406,6 +412,7 @@ class Link2Processor(object):
     def _xml_content_to_file_share_api(
             self,
             api_endpoint: str,
+            api_endpoint_code: str,
             api_key: str,
             xml_data: str,
             destination_file_path: str
@@ -428,6 +435,8 @@ class Link2Processor(object):
             f"Uploading file to file share ({destination_file_path})",
             "Uploading file to file share."
         )
+
+        api_endpoint = api_endpoint.format(api_endpoint_code=api_endpoint_code)
 
         headers = {
             "Content-Type": "application/xml",
