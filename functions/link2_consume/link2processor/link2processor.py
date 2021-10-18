@@ -42,7 +42,7 @@ class Link2Processor(object):
 
         self.file_share_endpoint_code = get_secret(
             os.environ["PROJECT_ID"],
-            os.environ["FILE_SHARE_ENDPOINT_CODE"]
+            os.environ["FILE_SHARE_ENDPOINT_SECRET_ID"]
         )
 
         self.mapping_field = MAPPING_FIELD
