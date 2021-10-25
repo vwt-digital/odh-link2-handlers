@@ -413,7 +413,7 @@ class Link2Processor(object):
                 map_kind = data.get(self.mapping_field)
                 # Use standard mapping unless mapping field is found
                 mapping_config = self.mapping[self.standard_mapping]
-                if map_kind:
+                if map_kind and map_kind in self.mapping:
                     mapping_config = self.mapping[map_kind]
                 # Set Azure settings right
                 self.destshare = mapping_config["azure_destshare"]
@@ -432,7 +432,7 @@ class Link2Processor(object):
             map_kind = selector_data.get(self.mapping_field)
             # Use standard mapping unless mapping field is found
             mapping_config = self.mapping[self.standard_mapping]
-            if map_kind:
+            if map_kind and map_kind in self.mapping:
                 mapping_config = self.mapping[map_kind]
             # Set Azure settings right
             self.destshare = mapping_config["azure_destshare"]
