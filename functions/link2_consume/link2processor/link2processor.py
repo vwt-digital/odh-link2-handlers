@@ -390,7 +390,11 @@ class Link2Processor(object):
                 file_share_folder_prefix = mapping_config["file_share_folder_prefix"]
 
                 # Mapping JSON according to found mapping configuration.
-                mapped_json_objects = self.map_json(mapping_config["mapping"], data, False, [])
+                mapped_json_objects = None
+                try:
+                    mapped_json_objects = self.map_json(mapping_config["mapping"], data, False, [])
+                except:
+                    logging.error("An exception occurred while mapping json")
 
                 if mapped_json_objects:
                     for mapped_json, file_name in mapped_json_objects:
