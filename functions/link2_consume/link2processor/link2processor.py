@@ -386,7 +386,11 @@ class Link2Processor(object):
         if self.storageaccount:
             # Map the message to XMLs
             added_jsons = []
-            mapped_jsons = self.map_json(mapping_json, msg, False, added_jsons)
+            mapped_jsons = None
+            try:
+              mapped_jsons = self.map_json(mapping_json, msg, False, added_jsons)
+            except:
+              logging.error("An exception occurred while mapping json")
             if not mapped_jsons:
                 return False
             # For every kind of XML file
