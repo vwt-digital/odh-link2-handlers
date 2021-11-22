@@ -382,7 +382,9 @@ class Link2Processor(object):
         if data_list is not None:
             for data in data_list:
                 # Check if mapping type is specified, else use default.
-                mapping_type = data.get(self.mapping_field, self.standard_mapping)
+                mapping_type = data.get(self.mapping_field)
+                if not mapping_type:
+                    mapping_type = self.standard_mapping
                 mapping_config = self.mapping[mapping_type]
 
                 # Getting file share API settings.
@@ -393,7 +395,7 @@ class Link2Processor(object):
                 mapped_json_objects = None
                 try:
                     mapped_json_objects = self.map_json(mapping_config["mapping"], data, False, [])
-                except:
+                except:  # noqa: E722
                     logging.error("An exception occurred while mapping json")
 
                 if mapped_json_objects:
