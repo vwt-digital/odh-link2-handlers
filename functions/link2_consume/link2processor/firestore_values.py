@@ -31,7 +31,7 @@ class FirestoreValuesProcessor(object):
                     # If it is a string
                     # Check if json value exists in the input json
                     json_value = input_json.get(json_field)
-                    if not json_value:
+                    if json_field not in input_json:
                         logging.error(f"The field {json_field} cannot be found in the message")
                         return False, "", []
                     json_values.append({fs_id: json_value})
